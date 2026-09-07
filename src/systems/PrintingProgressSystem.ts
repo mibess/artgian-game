@@ -1,92 +1,143 @@
 import Phaser from "phaser";
+/** Independent printer plane: the bed never collides with the playable platforms. */
 export class PrintingProgressSystem {
+  lastLayer: Phaser.GameObjects.Text;
   value = 0;
   hat: Phaser.GameObjects.Image;
   mask: Phaser.GameObjects.Graphics;
   head: Phaser.GameObjects.Container;
   light: Phaser.GameObjects.Graphics;
   label: Phaser.GameObjects.Text;
+  ghost: Phaser.GameObjects.Image;
+  bed: Phaser.GameObjects.Image | Phaser.GameObjects.Graphics;
+  glow: Phaser.GameObjects.Image | undefined;
   constructor(private s: Phaser.Scene) {
-    const rig = s.add.graphics().setScrollFactor(0).setDepth(-10);
-    rig.fillStyle(0x08131e, 0.65);
-    rig.fillRoundedRect(105, 198, 330, 345, 14);
-    rig.lineStyle(3, 0x48545e, 0.7);
-    rig.strokeRoundedRect(105, 198, 330, 345, 14);
-    [126, 411].forEach((x) => {
-      rig.fillStyle(0x56616a);
-      rig.fillRect(x, 212, 5, 299);
-      rig.fillStyle(0xd59a53, 0.55);
-      rig.fillRect(x + 7, 212, 2, 299);
-    });
-    rig.fillStyle(0x33434d);
-    rig.fillRect(120, 485, 300, 17);
-    rig.fillStyle(0x47ccea, 0.5);
-    rig.fillRect(130, 485, 280, 2);
-    rig.fillStyle(0x1c2b35);
-    rig.fillRect(136, 504, 268, 22);
-    this.hat = s.add
-      .image(270, 425, "hat")
+    const rail = s.add.graphics().setScrollFactor(0).setDepth(-10);
+    rail.fillStyle(0x17222d);
+    rail.fillRect(180, 20, 330, 16);
+    rail.fillStyle(0x7a8a95);
+    rail.fillRect(180, 24, 330, 3);
+    rail.fillStyle(0xdda553);
+    rail.fillRect(180, 35, 330, 2);
+    this.bed = s.textures.exists("bed")
+      ? s.add
+          .image(350, 227, "bed")
+          .setDisplaySize(282, 107)
+          .setScrollFactor(0)
+          .setDepth(-9)
+      : s.add
+          .graphics()
+          .setScrollFactor(0)
+          .setDepth(-9)
+          .fillStyle(0x384859)
+          .fillTriangle(235, 174, 471, 174, 500, 251)
+          .fillTriangle(235, 174, 500, 251, 213, 251);
+    this.ghost = s.add
+      .image(347, 171, "hat")
+      .setDisplaySize(177, 107)
+      .setTint(0x719ecd)
+      .setAlpha(0.12)
       .setScrollFactor(0)
-      .setDepth(-9)
-      .setAlpha(0.95);
+      .setDepth(-8);
+    this.hat = s.add
+      .image(347, 171, "hat")
+      .setDisplaySize(177, 107)
+      .setScrollFactor(0)
+      .setDepth(-7);
     this.mask = s.make.graphics({ x: 0, y: 0 }).setScrollFactor(0);
     this.hat.setMask(this.mask.createGeometryMask());
-    const body = s.add
-      .rectangle(0, 0, 75, 54, 0x48525c)
-      .setStrokeStyle(3, 0x839098);
-    const panel = s.add.rectangle(0, -2, 48, 32, 0x292b43);
+    const body = s.textures.exists("head")
+      ? s.add.image(0, 0, "head").setDisplaySize(145, 112)
+      : s.add.rectangle(0, 0, 105, 65, 0x697482).setStrokeStyle(3, 0xeab65c);
     const text = s.add
-      .text(0, -3, "3D", {
+      .text(0, -10, "3D", {
         fontFamily: "Arial",
-        fontSize: "22px",
+        fontSize: "30px",
         fontStyle: "bold",
-        color: "#bbabdc",
-      })
-      .setOrigin(0.5);
-    const tip = s.add.triangle(0, 42, -9, -14, 9, -14, 0, 11, 0xe6ac54);
-    this.head = s.add
-      .container(270, 436, [body, panel, text, tip])
-      .setScrollFactor(0)
-      .setDepth(-7);
-    this.light = s.add.graphics().setScrollFactor(0).setDepth(-8);
-    this.label = s.add
-      .text(270, 519, "IMPRIMINDO • CHAVEIRO COWBOY", {
-        fontFamily: "Arial",
-        fontSize: "10px",
-        letterSpacing: 1.3,
-        color: "#82969e",
+        color: "#b7a2eb",
       })
       .setOrigin(0.5)
+      .setVisible(!s.textures.exists("head"));
+    this.head = s.add
+      .container(345, 57, [body, text])
       .setScrollFactor(0)
-      .setDepth(-7);
+      .setDepth(-6);
+    this.light = s.add.graphics().setScrollFactor(0).setDepth(-5);
+    this.label = s.add
+      .text(282, 242, "CAMADA POR CAMADA", {
+        fontFamily: "Trebuchet MS",
+        fontStyle: "italic",
+        fontSize: "14px",
+        color: "#c3b5bd",
+      })
+      .setOrigin(0.5)
+      .setAngle(-3)
+      .setScrollFactor(0)
+      .setDepth(-5);
+    this.lastLayer = s.add
+      .text(456, 121, "ÚLTIMA\nCAMADA!", {
+        fontFamily: "Trebuchet MS",
+        fontStyle: "bold italic",
+        fontSize: "17px",
+        align: "center",
+        color: "#ffe193",
+        stroke: "#614d30",
+        strokeThickness: 1,
+      })
+      .setOrigin(0.5)
+      .setAngle(-9)
+      .setScrollFactor(0)
+      .setDepth(-4)
+      .setAlpha(0);
+    if (s.textures.exists("glow"))
+      this.glow = s.add
+        .image(347, 205, "glow")
+        .setDisplaySize(255, 105)
+        .setTint(0xffba38)
+        .setBlendMode(Phaser.BlendModes.ADD)
+        .setAlpha(0.5)
+        .setScrollFactor(0)
+        .setDepth(-8);
   }
   update(progress: number, time: number) {
     this.value = Math.max(this.value, progress);
-    const base = 498,
-      height = 150 * this.value;
+    const base = 224,
+      printedHeight = 107 * this.value;
     this.mask
       .clear()
       .fillStyle(0xffffff)
-      .fillRect(140, base - height, 260, height);
-    this.head.setPosition(270 + Math.sin(time / 550) * 83, base - height - 57);
-    this.light.clear();
-    this.light.fillStyle(0xffb43e, 0.08);
-    this.light.fillTriangle(
-      this.head.x,
-      this.head.y + 35,
-      this.head.x - 32,
-      base - height + 8,
-      this.head.x + 32,
-      base - height + 8,
+      .fillRect(250, base - printedHeight, 200, printedHeight);
+    this.head.setPosition(
+      345 + Math.sin(time / 650) * 38,
+      base - printedHeight - 70,
     );
-    this.light.fillStyle(0xffdd85, 0.9);
-    for (let i = 0; i < 6; i++)
+    this.light
+      .clear()
+      .fillStyle(0xffbc47, 0.08)
+      .fillTriangle(
+        this.head.x,
+        this.head.y + 49,
+        this.head.x - 31,
+        base - printedHeight + 4,
+        this.head.x + 31,
+        base - printedHeight + 4,
+      )
+      .fillStyle(0xffdda2, 0.9);
+    for (let i = 0; i < 5; i++)
       this.light.fillCircle(
-        this.head.x + Math.sin(time / 100 + i * 2) * 16,
-        base - height + Math.cos(time / 170 + i) * 8,
-        1.1,
+        this.head.x + Math.sin(time / 120 + i * 2) * 13,
+        base - printedHeight + Math.cos(time / 180 + i) * 6,
+        1,
       );
-    if (this.value >= 1) this.label.setText("ÚLTIMA CAMADA • PEÇA CONCLUÍDA");
+    this.lastLayer.setAlpha(this.value > 0.75 ? 1 : 0);
+    this.ghost.setAlpha(0.12 * (1 - this.value));
+    this.label.setText(
+      this.value >= 1
+        ? "IMPRESSÃO CONCLUÍDA!"
+        : this.value > 0.75
+          ? "Quase lá! ☺"
+          : "CAMADA POR CAMADA",
+    );
   }
   destroy() {
     this.mask.destroy();

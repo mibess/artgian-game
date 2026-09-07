@@ -29,10 +29,18 @@ npm test
 
 Quedas em plataformas inferiores são permitidas. Cair abaixo da margem da câmera ou do mundo perde uma vida; obstáculos também. Após reaparecer, há dois segundos de invulnerabilidade. Plataformas temporárias desaparecem após 1,7 s e retornam após 2,8 s. Lasers alternam períodos de atividade. Todos os filamentos são opcionais; 15/15 concede celebração visual.
 
-## Assets e limites do MVP
+## Assets e direção de arte
 
-`public/assets/character-sheet.png` é a folha de poses fornecida. O carregamento recorta as 16 células e normaliza os pés em `src/art/textures.ts`. Animação por poses: não há interpolação esquelética nem ciclo de corrida desenhado quadro a quadro. Oficina, plataformas, carretel e chapéu são placeholders procedurais independentes, substituíveis pelas mesmas chaves de textura. Nenhuma imagem completa da referência é usada como cenário.
+A folha de poses do personagem foi fornecida pelo usuário. A apresentação usa texturas de maior resolução, com alpha preservado, e escala independente do corpo de colisão. Animação por poses; não há interpolação esquelética.
 
-O áudio é um placeholder procedural (ambiente de impressora e efeitos); trilha definitiva pode ser integrada em `AudioSystem`. A próxima impressão reinicia a fase atual. Não há salvamento persistente.
+`public/assets/workshop-depth.png` é uma camada distante de oficina criada a partir da referência. `workshop-atlas.png` contém peças independentes: plataformas, pistão, cabeçote, mesa, chaveiro, carretel, coração, ventilador, coluna e prateleira. O carregador recorta as regiões e remove o fundo claro conectado às bordas. Trilhos, placas, props, gameplay e impressão são planos distintos. A referência inteira não é usada como fundo jogável.
 
-Validação automatizada: TypeScript, build de produção, alcance geométrico de todos os saltos, progressão, colecionáveis e checkpoints. Ajuste fino de dificuldade e teste em aparelhos físicos ainda requerem playtesting.
+A composição foi refinada em cinco rodadas de capturas: proporções, iluminação, elementos principais, profundidade e polimento. As capturas ficam em `artifacts/visual/`. Veja `ASSETS.md` para os briefs de geração.
+
+## Validação
+
+TypeScript, build de produção e três testes automatizados: alcance de todos os saltos, progressão/colecionáveis e checkpoints. A fase também foi percorrida no navegador com controles normais, física e obstáculos ativos, chegando à conclusão com três vidas e 14/15 filamentos.
+
+Em desenvolvimento, abra `/?qa=1`: P alterna um percurso automático de teste que envia apenas movimento e salto, com pausas no checkpoint central e na penúltima plataforma. K captura o framebuffer do jogo. Esse módulo é removido do build de produção. Ele não altera vidas, não teletransporta o jogador e não desativa obstáculos.
+
+O áudio continua sintetizado. A próxima impressão reinicia esta fase. Não há salvamento persistente. Aparelhos físicos ainda podem exigir ajuste fino de desempenho e controles.

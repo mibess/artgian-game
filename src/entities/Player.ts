@@ -3,6 +3,7 @@ import { SPEED, JUMP } from "../config/gameConfig";
 export type PlayerState =
   "idle" | "run" | "jump" | "fall" | "land" | "hurt" | "celebrate" | "dead";
 export class Player extends Phaser.Physics.Arcade.Sprite {
+  visual: Phaser.GameObjects.Image;
   state: PlayerState = "idle";
   groundTime = -999;
   bufferTime = -999;
@@ -12,7 +13,13 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     super(s, x, y, "pose0");
     s.add.existing(this);
     s.physics.add.existing(this);
-    this.setDisplaySize(58, 81).setDepth(10);
+    this.setDisplaySize(58, 81).setVisible(false);
+    // Keep the proven collision body; the larger art is anchored to its feet.
+    this.visual = s.add
+      .image(x, y + 40.5, "pose0")
+      .setOrigin(0.5, 1)
+      .setDisplaySize(132, 184)
+      .setDepth(10);
     const b = this.body as Phaser.Physics.Arcade.Body;
     b.setSize(44, 112).setOffset(28, 28);
     b.setMaxVelocity(SPEED, 1100);
@@ -60,6 +67,14 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.wasGround = grounded;
     this.x = Phaser.Math.Clamp(this.x, 25, 515);
     return jumped;
+  }
+  syncVisual() {
+    this.visual
+      .setPosition(this.x, this.y + 40.5)
+      .setTexture("art-" + this.texture.key)
+      .setDisplaySize(132, 184)
+      .setFlipX(this.flipX)
+      .setAlpha(this.alpha);
   }
   pose(state: PlayerState) {
     this.state = state;

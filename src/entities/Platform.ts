@@ -8,19 +8,22 @@ export class Platform extends Phaser.Physics.Arcade.Sprite {
   dx = 0;
   dy = 0;
   constructor(s: Phaser.Scene, p: PlatformSpec) {
-    super(s, p.x, p.y, "platform");
+    super(s, p.x, p.y, p.kind === "temporary" ? "striped" : "platform");
     this.spec = p;
     this.lastX = p.x;
     this.lastY = p.y;
     s.add.existing(this);
     s.physics.add.existing(this);
-    this.setDisplaySize(p.w, 27).setDepth(5);
+    this.setDisplaySize(p.w, 44)
+      .setOrigin(0.5, 13.5 / 44)
+      .setDepth(5);
     const b = this.body as Phaser.Physics.Arcade.Body;
+    b.setSize(this.width, (this.height * 27) / 44).setOffset(0, 0);
     b.setAllowGravity(false).setImmovable(true);
     b.checkCollision.down = false;
     b.checkCollision.left = false;
     b.checkCollision.right = false;
-    if (p.kind === "temporary") this.setTint(0xffbc60);
+
     if (p.kind === "boost") this.setTint(0x80ffdc);
   }
   step(time: number) {

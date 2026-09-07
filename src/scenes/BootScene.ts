@@ -21,6 +21,8 @@ export class BootScene extends Phaser.Scene {
       })
       .setOrigin(0.5);
     this.load.image("sheet", "assets/character-sheet.png");
+    this.load.image("workshop-atlas", "assets/workshop-atlas.png");
+    this.load.image("workshop-depth", "assets/workshop-depth.png");
   }
   create() {
     makeTextures(this);

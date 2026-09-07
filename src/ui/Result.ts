@@ -5,6 +5,11 @@ export function result(
   data: { count: number; time: number; lives?: number },
 ) {
   s.cameras.main.setBackgroundColor("#0d1b26");
+  s.add
+    .image(270, 480, "workshop-depth")
+    .setDisplaySize(600, 1066)
+    .setAlpha(0.22);
+  s.add.rectangle(270, 480, 540, 960, 0x08111c, 0.74);
   const glow = s.add.graphics();
   glow.fillStyle(win ? 0x765530 : 0x633342, 0.18);
   glow.fillCircle(270, 340, 210);
@@ -23,7 +28,9 @@ export function result(
       color: "#839eac",
     })
     .setOrigin(0.5);
-  s.add.image(270, 320, win ? "hat" : "pose11").setScale(win ? 1.3 : 1.1);
+  s.add
+    .image(270, 308, win ? "hat" : "art-pose11")
+    .setDisplaySize(win ? 288 : 125, win ? 178 : 175);
   s.add
     .text(270, 460, win ? "IMPRESSÃO\nCONCLUÍDA!" : "IMPRESSÃO\nINTERROMPIDA", {
       fontFamily: "Arial",
@@ -54,12 +61,10 @@ export function result(
     )
     .setOrigin(0.5);
   if (win)
-    s.add
-      .text(270, 667, "♥ ".repeat(data.lives ?? 0), {
-        fontSize: "27px",
-        color: "#ff737a",
-      })
-      .setOrigin(0.5);
+    for (let i = 0; i < (data.lives ?? 0); i++)
+      s.add
+        .image(270 + (i - ((data.lives ?? 0) - 1) / 2) * 36, 667, "heart")
+        .setDisplaySize(30, 30);
   if (data.count === 15)
     s.add
       .text(270, 709, "✦ FILAMENTO COMPLETO! ✦", {

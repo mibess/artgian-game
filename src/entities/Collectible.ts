@@ -4,7 +4,7 @@ export class Collectible extends Phaser.Physics.Arcade.Image {
     super(s, x, y, "spool");
     s.add.existing(this);
     s.physics.add.existing(this);
-    this.setDisplaySize(35, 35).setDepth(7);
+    this.setDisplaySize(39, 44).setDepth(7);
     (this.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
     s.tweens.add({
       targets: this,

@@ -14,6 +14,7 @@ import { AudioSystem } from "../systems/AudioSystem";
 import { MobileControls } from "../ui/MobileControls";
 import { HUD } from "../ui/HUD";
 import { workshop } from "../art/Workshop";
+import type { VisualQA } from "../dev/VisualQA";
 interface Hazard {
   obj: Phaser.GameObjects.Rectangle;
   kind: "laser" | "head" | "spikes" | "arm";
@@ -24,6 +25,7 @@ interface Hazard {
   art: Phaser.GameObjects.Container;
 }
 export class GameScene extends Phaser.Scene {
+  qa?: VisualQA;
   player!: Player;
   ledges: Platform[] = [];
   hud!: HUD;
@@ -47,6 +49,7 @@ export class GameScene extends Phaser.Scene {
     super("Game");
   }
   create() {
+    this.qa = undefined;
     this.ledges = [];
     this.hazards = [];
     this.lives = 3;
@@ -65,7 +68,7 @@ export class GameScene extends Phaser.Scene {
     this.printer = new PrintingProgressSystem(this);
     this.ledges = platforms.map((p) => {
       const a = new Platform(this, p);
-      if (p.checkpoint !== undefined) {
+      if (p.checkpoint !== undefined && p.checkpoint > 0) {
         this.add
           .text(
             p.x,
@@ -91,7 +94,7 @@ export class GameScene extends Phaser.Scene {
           .setDepth(6);
       return a;
     });
-    this.player = new Player(this, 270, FLOOR - 57);
+    this.player = new Player(this, 105, FLOOR - 57);
     this.cameras.main.setBounds(0, 0, W, WORLD_H);
     this.cameras.main.scrollY = WORLD_H - H;
     this.physics.add.collider(
@@ -117,36 +120,31 @@ export class GameScene extends Phaser.Scene {
         if (this.collected === 15) this.hud.message("FILAMENTO COMPLETO! ✦");
       });
     }
+    this.makeHazard("spikes", 450, FLOOR - 28, 174, 28, 0);
     this.makeHazard("laser", 340, 2100, 150, 7, 0);
     this.makeHazard("laser", 150, 1300, 170, 7, 1700);
     this.makeHazard("spikes", 475, 1600, 80, 20, 0);
     this.makeHazard("spikes", 49, 1070, 80, 20, 0);
     this.makeHazard("head", 270, 640, 65, 45, 0);
     this.makeHazard("arm", 430, 1850, 65, 20, 0);
-    this.add
-      .text(270, FLOOR - 160, "PEQUENOS SALTOS.\nGRANDES CRIAÇÕES.", {
-        fontFamily: "Arial",
-        fontSize: "21px",
-        fontStyle: "bold",
-        align: "center",
-        lineSpacing: 7,
-        color: "#dfd2b8",
-      })
-      .setOrigin(0.5)
-      .setDepth(3);
+    if (import.meta.env.DEV && new URLSearchParams(location.search).has("qa")) {
+      void import("../dev/VisualQA").then(({ VisualQA }) => {
+        this.qa = new VisualQA(this);
+      });
+    }
     this.hud = new HUD(this);
     this.controls = new MobileControls(this);
     this.keys = this.input.keyboard!.addKeys(
       "A,D,LEFT,RIGHT,SPACE,ESC",
     ) as typeof this.keys;
     this.pauseLabel = this.add
-      .text(483, 81, "Ⅱ", { fontSize: "23px", color: "#c4dce7" })
+      .text(283, 916, "Ⅱ", { fontSize: "23px", color: "#c4dce7" })
       .setScrollFactor(0)
       .setDepth(110)
       .setInteractive({ useHandCursor: true })
       .on("pointerdown", () => this.togglePause());
     const sound = this.add
-      .text(437, 81, "♫", { fontSize: "23px", color: "#c4dce7" })
+      .text(243, 916, "♫", { fontSize: "23px", color: "#c4dce7" })
       .setScrollFactor(0)
       .setDepth(110)
       .setInteractive({ useHandCursor: true })
@@ -185,6 +183,7 @@ export class GameScene extends Phaser.Scene {
   land(p: Platform) {
     if (this.locked) return;
     this.support = p;
+    this.qa?.landed(this.ledges.indexOf(p));
     p.touch();
     if (
       p.spec.checkpoint !== undefined &&
@@ -213,34 +212,28 @@ export class GameScene extends Phaser.Scene {
     const obj = this.add.rectangle(x, y, w, h, 0xff5362, 0);
     const art = this.add.container(x, y).setDepth(8);
     if (kind === "laser") {
-      art.add(this.add.rectangle(0, 0, w, 18, 0xff244a, 0.1));
+      art.add(
+        this.add
+          .image(0, 0, "glow")
+          .setDisplaySize(w + 20, 44)
+          .setTint(0xff203b)
+          .setBlendMode(Phaser.BlendModes.ADD)
+          .setAlpha(0.5),
+      );
       art.add(this.add.rectangle(0, 0, w, 4, 0xff3355));
       art.add(this.add.rectangle(0, 0, w, 1, 0xffc8c8));
       [-w / 2, w / 2].forEach((a) =>
-        art.add(
-          this.add
-            .rectangle(a, 0, 13, 30, 0x586976)
-            .setStrokeStyle(2, 0xbd765b),
-        ),
+        art.add(this.add.image(a, 0, "fan").setDisplaySize(19, 31)),
       );
     } else if (kind === "spikes") {
-      art.add(this.add.rectangle(0, 12, w, 12, 0x4e5661));
-      for (let i = -w / 2 + 8; i < w / 2; i += 15)
-        art.add(
-          this.add
-            .triangle(i, 0, 0, 12, 6, -10, 12, 12, 0xff5b55)
-            .setStrokeStyle(1, 0xffb09a),
-        );
+      art.add(this.add.image(0, 23, "spikes").setDisplaySize(w + 8, 80));
+    } else if (kind === "head") {
+      art.add(this.add.image(0, 0, "head").setDisplaySize(w + 32, h + 40));
     } else {
+      art.add(this.add.image(0, 0, "platform").setDisplaySize(w + 25, h + 12));
       art.add(
-        this.add.rectangle(0, 0, w, h, 0x53606b).setStrokeStyle(3, 0x8a939c),
+        this.add.image(36, 0, "rail").setDisplaySize(20, 130).setAngle(90),
       );
-      art.add(this.add.rectangle(0, 0, w - 15, h - 12, 0x272d3b));
-      art.add(this.add.rectangle(0, h / 2, w - 10, 4, 0xff8350));
-      if (kind === "head")
-        art.add(
-          this.add.triangle(0, h / 2 + 9, -8, -10, 8, -10, 0, 8, 0xffb750),
-        );
     }
     this.hazards.push({ obj, art, kind, x, y, active: true, phase });
   }
@@ -263,6 +256,17 @@ export class GameScene extends Phaser.Scene {
   }
   damage() {
     if (this.locked || this.elapsed < this.invulnerable) return;
+    if (this.qa)
+      console.info(
+        "QA_DAMAGE",
+        JSON.stringify({
+          x: this.player.x,
+          y: this.player.y,
+          target: this.qa.target,
+          elapsed: this.elapsed,
+          checkpoint: this.checkpoint.index,
+        }),
+      );
     this.lives--;
     this.hud.damage(this.lives);
     this.audio.play("hurt");
@@ -340,18 +344,21 @@ export class GameScene extends Phaser.Scene {
           this.player.y += this.support.dy;
         }
       }
+      const qaInput = this.qa?.input();
       const axis =
+        qaInput?.axis ||
         Number(
           this.keys.D.isDown || this.keys.RIGHT.isDown || this.controls.right,
         ) -
-        Number(
-          this.keys.A.isDown || this.keys.LEFT.isDown || this.controls.left,
-        );
+          Number(
+            this.keys.A.isDown || this.keys.LEFT.isDown || this.controls.left,
+          );
       if (
         this.player.step(
           this.elapsed,
           axis,
-          Phaser.Input.Keyboard.JustDown(this.keys.SPACE) ||
+          qaInput?.jump ||
+            Phaser.Input.Keyboard.JustDown(this.keys.SPACE) ||
             this.controls.consumeJump(),
         )
       ) {
@@ -407,6 +414,7 @@ export class GameScene extends Phaser.Scene {
           : 1
         : 1,
     );
+    this.player.syncVisual();
     this.printer.update(this.maxProgress, this.elapsed);
     this.hud.update(this.lives, this.collected, this.maxProgress);
   }

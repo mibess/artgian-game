@@ -1,118 +1,104 @@
 import Phaser from "phaser";
 export class HUD {
-  hearts: Phaser.GameObjects.Text[] = [];
+  hearts: (Phaser.GameObjects.Image | Phaser.GameObjects.Text)[] = [];
   count: Phaser.GameObjects.Text;
   progress: Phaser.GameObjects.Graphics;
   percent: Phaser.GameObjects.Text;
   toast: Phaser.GameObjects.Text;
   constructor(private s: Phaser.Scene) {
-    const g = s.add.graphics().setScrollFactor(0).setDepth(90);
-    g.fillStyle(0x09131d, 0.92);
-    g.fillRect(0, 0, 540, 120);
-    g.lineStyle(1, 0x52606a, 0.35);
-    g.lineBetween(22, 119, 518, 119);
+    for (let i = 0; i < 3; i++) {
+      const h = s.textures.exists("heart")
+        ? s.add.image(38 + i * 46, 35, "heart").setDisplaySize(44, 43)
+        : s.add
+            .text(38 + i * 46, 35, "♥", {
+              fontSize: "45px",
+              color: "#ff3439",
+              stroke: "#0d7ad6",
+              strokeThickness: 5,
+            })
+            .setOrigin(0.5);
+      this.hearts.push(h.setScrollFactor(0).setDepth(91));
+    }
     s.add
-      .text(23, 19, "ARTGIAN", {
-        fontFamily: "Arial",
-        fontSize: "12px",
-        letterSpacing: 4,
-        color: "#e1c99c",
-      })
+      .rectangle(477, 35, 102, 52, 0x101923, 0.58)
+      .setStrokeStyle(1, 0xf2c16e, 0.3)
+      .setScrollFactor(0)
+      .setDepth(90);
+    s.add
+      .image(445, 35, "spool")
+      .setDisplaySize(25, 29)
       .setScrollFactor(0)
       .setDepth(91);
     s.add
-      .text(23, 42, "CAMADA POR CAMADA", {
+      .text(466, 17, "FILAMENTO", {
         fontFamily: "Arial",
-        fontSize: "19px",
-        fontStyle: "bold",
-        color: "#f5f2e9",
-      })
-      .setScrollFactor(0)
-      .setDepth(91);
-    for (let i = 0; i < 3; i++)
-      this.hearts.push(
-        s.add
-          .text(23 + i * 30, 76, "♥", {
-            fontSize: "29px",
-            color: "#ff6868",
-            stroke: "#562937",
-            strokeThickness: 3,
-          })
-          .setScrollFactor(0)
-          .setDepth(91),
-      );
-    s.add
-      .image(424, 37, "spool")
-      .setDisplaySize(28, 28)
-      .setScrollFactor(0)
-      .setDepth(91);
-    s.add
-      .text(450, 20, "FILAMENTO", {
-        fontFamily: "Arial",
-        fontSize: "9px",
-        letterSpacing: 1,
-        color: "#91a9b7",
+        fontSize: "8px",
+        letterSpacing: 0.7,
+        color: "#f2d3a1",
       })
       .setScrollFactor(0)
       .setDepth(91);
     this.count = s.add
-      .text(450, 36, "0 / 15", {
+      .text(466, 32, "0 / 15", {
         fontFamily: "Arial",
-        fontSize: "20px",
+        fontSize: "17px",
         fontStyle: "bold",
-        color: "#ffce7e",
-      })
-      .setScrollFactor(0)
-      .setDepth(91);
-    s.add
-      .text(180, 80, "IMPRESSÃO", {
-        fontFamily: "Arial",
-        fontSize: "9px",
-        letterSpacing: 1.5,
-        color: "#9caebb",
+        color: "#fff1d4",
       })
       .setScrollFactor(0)
       .setDepth(91);
     this.percent = s.add
-      .text(371, 77, "0%", {
+      .text(475, 78, "0%", {
         fontFamily: "Arial",
-        fontSize: "12px",
-        color: "#bdefff",
+        fontSize: "11px",
+        color: "#fff2d5",
+        stroke: "#1a2027",
+        strokeThickness: 3,
       })
+      .setOrigin(0.5)
       .setScrollFactor(0)
       .setDepth(91);
     this.progress = s.add.graphics().setScrollFactor(0).setDepth(91);
     this.toast = s.add
-      .text(270, 154, "FASE 01  /  A PRIMEIRA IMPRESSÃO", {
+      .text(270, 812, "A / D para mover • Espaço para pular", {
         fontFamily: "Arial",
         fontSize: "12px",
-        letterSpacing: 1.4,
-        color: "#efdab4",
-        backgroundColor: "#12212ddd",
-        padding: { x: 15, y: 10 },
+        color: "#f8eedb",
+        backgroundColor: "#15212cbb",
+        padding: { x: 12, y: 8 },
       })
       .setOrigin(0.5)
       .setScrollFactor(0)
       .setDepth(95);
-    s.time.delayedCall(4500, () => this.toast.setAlpha(0));
+    s.time.delayedCall(4200, () => this.toast.setAlpha(0));
   }
   update(lives: number, count: number, p: number) {
     this.count.setText(count + " / 15");
     this.percent.setText(Math.floor(p * 100) + "%");
     this.progress
       .clear()
-      .fillStyle(0x2d414e)
-      .fillRoundedRect(180, 101, 225, 4, 2)
-      .fillStyle(0x59cce9)
-      .fillRoundedRect(180, 101, Math.max(2, 225 * p), 4, 2);
-    this.hearts.forEach((h, i) =>
-      h.setColor(i < lives ? "#ff6868" : "#37444e"),
-    );
+      .fillStyle(0x151f2c, 0.8)
+      .fillRoundedRect(432, 66, 86, 3, 1)
+      .fillStyle(0xffc268)
+      .fillRoundedRect(432, 66, Math.max(1, 86 * p), 3, 1);
+    this.hearts.forEach((h, i) => {
+      h.setAlpha(i < lives ? 1 : 0.3);
+      if (h instanceof Phaser.GameObjects.Image) {
+        if (i < lives) h.clearTint();
+        else h.setTint(0x33445a);
+      }
+    });
   }
   damage(lives: number) {
     const h = this.hearts[lives];
     if (h)
-      this.s.tweens.add({ targets: h, scale: 1.4, duration: 160, yoyo: true });
+      this.s.tweens.add({
+        targets: h,
+        scaleX: h.scaleX * 1.25,
+        scaleY: h.scaleY * 1.25,
+        duration: 160,
+        yoyo: true,
+      });
   }
   message(text: string) {
     this.s.tweens.killTweensOf(this.toast);
