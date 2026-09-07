@@ -29,8 +29,8 @@ export function result(
     })
     .setOrigin(0.5);
   s.add
-    .image(270, 308, win ? "hat" : "art-pose11")
-    .setDisplaySize(win ? 288 : 125, win ? 178 : 175);
+    .image(270, 308, win ? "hat" : "char-jump-7")
+    .setDisplaySize(win ? 288 : 118, win ? 178 : 164);
   s.add
     .text(270, 460, win ? "IMPRESSÃO\nCONCLUÍDA!" : "IMPRESSÃO\nINTERROMPIDA", {
       fontFamily: "Arial",
