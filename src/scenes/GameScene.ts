@@ -41,6 +41,7 @@ export class GameScene extends Phaser.Scene {
   locked = false;
   paused = false;
   support?: Platform;
+  highestCameraY = WORLD_H - H;
   pauseLabel!: Phaser.GameObjects.Text;
   constructor() {
     super("Game");
@@ -56,6 +57,7 @@ export class GameScene extends Phaser.Scene {
     this.locked = false;
     this.paused = false;
     this.support = undefined;
+    this.highestCameraY = WORLD_H - H;
     this.checkpoint = new CheckpointSystem();
     this.audio = new AudioSystem();
     this.physics.world.setBounds(0, 0, W, WORLD_H);
@@ -293,6 +295,7 @@ export class GameScene extends Phaser.Scene {
         0,
         WORLD_H - H,
       );
+      this.highestCameraY = this.cameras.main.scrollY;
       this.invulnerable = this.elapsed + 2000;
       this.locked = false;
       this.hud.message("DE VOLTA AO CHECKPOINT");
@@ -364,6 +367,8 @@ export class GameScene extends Phaser.Scene {
       let target = cam.scrollY;
       if (sy < 400) target = this.player.y - 400;
       else if (sy > 760) target = this.player.y - 760;
+      this.highestCameraY = Math.min(this.highestCameraY, cam.scrollY);
+      target = Math.min(target, this.highestCameraY + 180);
       cam.scrollY = Phaser.Math.Clamp(
         Phaser.Math.Linear(cam.scrollY, target, 1 - Math.exp(-dt / 200)),
         0,
