@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import { makeTextures } from "../art/textures";
 import { characters } from "../config/characters";
+import { prepareGiulinhaSheets } from "../art/characterSheets";
 export class BootScene extends Phaser.Scene {
   constructor() {
     super("Boot");
@@ -23,6 +24,11 @@ export class BootScene extends Phaser.Scene {
       .setOrigin(0.5);
     for (const character of characters) {
       for (const action of ["idle", "walk", "jump"]) {
+        if (character.id === "giulinha") {
+          this.load.image("giulinha-source-" + action,
+            "assets/giulinha/giulinha_" + action + "_sheet.png");
+          continue;
+        }
         this.load.spritesheet(character.id + "-" + action,
           "assets/" + character.id + "/" + character.id + "_" + action + "_sheet.png",
           { frameWidth: 256, frameHeight: 256 });
@@ -34,6 +40,7 @@ export class BootScene extends Phaser.Scene {
   }
   create() {
     makeTextures(this);
+    prepareGiulinhaSheets(this);
     this.scene.start("Menu");
   }
 }

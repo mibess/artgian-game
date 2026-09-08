@@ -77,15 +77,13 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     if (this.state === "jump") {
       const progress = Phaser.Math.Clamp((JUMP + b.velocity.y) / JUMP, 0, 1);
       this.visualTexture = this.character.id + "-jump";
-      this.visualFrame = this.character.id === "angel"
-        ? 12 + Math.round(progress * 23)
-        : 6 + Math.round(progress * 24);
+      const { start, apex } = this.character.jumpFrames;
+      this.visualFrame = start + Math.round(progress * (apex - start));
     } else if (this.state === "fall") {
       const progress = Phaser.Math.Clamp(b.velocity.y / JUMP, 0, 1);
       this.visualTexture = this.character.id + "-jump";
-      this.visualFrame = this.character.id === "angel"
-        ? 35 + Math.round(progress * 18)
-        : 30 + Math.round(progress * 23);
+      const { apex, fallEnd } = this.character.jumpFrames;
+      this.visualFrame = apex + Math.round(progress * (fallEnd - apex));
     } else if (this.state === "land") {
       const progress = Phaser.Math.Clamp(
         1 - (this.landingUntil - now) / 180,

@@ -22,15 +22,18 @@ export class MenuScene extends Phaser.Scene {
     text(40, 261, "01  PERSONAGEM", 14, "#a9bdc6", true);
     const selected = getCharacter(this.registry.get("character"));
     this.registry.set("character", selected.id);
+    const cardGap = 12;
+    const cardWidth = (468 - cardGap * (characters.length - 1)) / characters.length;
     const cards = characters.map((character, index) => {
-      const x = 36 + index * 242;
+      const x = 36 + index * (cardWidth + cardGap);
+      const center = x + cardWidth / 2;
       const background = this.add.graphics();
-      const portrait = this.add.image(x + 113, 468, character.id + "-idle", 0)
+      const portrait = this.add.image(center, 468, character.id + "-idle", 0)
         .setOrigin(character.originX, character.originY).setDisplaySize(168, 168);
       this.portraits.push(portrait);
-      text(x + 113, 312, character.name, 23, "#f2f4ee", true).setOrigin(0.5);
-      const badge = text(x + 113, 507, "", 13, "#e7ba79", true).setOrigin(0.5);
-      const zone = this.add.zone(x + 113, 412, 226, 244).setInteractive({ useHandCursor: true });
+      text(center, 312, character.name, 23, "#f2f4ee", true).setOrigin(0.5);
+      const badge = text(center, 507, "", 12, "#e7ba79", true).setOrigin(0.5);
+      const zone = this.add.zone(center, 412, cardWidth, 244).setInteractive({ useHandCursor: true });
       return { character, x, background, badge, zone };
     });
     const select = (id: string) => {
@@ -38,21 +41,25 @@ export class MenuScene extends Phaser.Scene {
       for (const card of cards) {
         const active = card.character.id === id;
         card.background.clear().fillStyle(active ? 0x20343d : 0x142630, 0.94)
-          .fillRoundedRect(card.x, 290, 226, 244, 22)
+          .fillRoundedRect(card.x, 290, cardWidth, 244, 22)
           .lineStyle(active ? 2 : 1, active ? 0xe7ba79 : 0x30444f)
-          .strokeRoundedRect(card.x, 290, 226, 244, 22);
+          .strokeRoundedRect(card.x, 290, cardWidth, 244, 22);
         card.badge.setText(active ? "✓ SELECIONADO" : "SELECIONAR");
       }
     };
     for (const card of cards) card.zone.on("pointerdown", () => select(card.character.id));
     select(selected.id);
-    const chooseMib = () => select("mib");
-    const chooseAngel = () => select("angel");
-    this.input.keyboard?.on("keydown-LEFT", chooseMib);
-    this.input.keyboard?.on("keydown-RIGHT", chooseAngel);
+    const cycle = (direction: number) => {
+      const index = characters.findIndex((character) => character.id === this.registry.get("character"));
+      select(characters[(index + direction + characters.length) % characters.length].id);
+    };
+    const previous = () => cycle(-1);
+    const next = () => cycle(1);
+    this.input.keyboard?.on("keydown-LEFT", previous);
+    this.input.keyboard?.on("keydown-RIGHT", next);
     this.events.once("shutdown", () => {
-      this.input.keyboard?.off("keydown-LEFT", chooseMib);
-      this.input.keyboard?.off("keydown-RIGHT", chooseAngel);
+      this.input.keyboard?.off("keydown-LEFT", previous);
+      this.input.keyboard?.off("keydown-RIGHT", next);
     });
     text(40, 563, "02  FASE", 14, "#a9bdc6", true);
     panel(36, 592, 468, 153);
