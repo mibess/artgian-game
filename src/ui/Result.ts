@@ -6,6 +6,7 @@ export function result(
   win: boolean,
   data: { count: number; time: number; lives?: number },
 ) {
+  const character = getCharacter(s.registry.get("character"));
   s.cameras.main.setBackgroundColor("#0d1b26");
   s.add
     .image(270, 480, "workshop-depth")
@@ -32,7 +33,7 @@ export function result(
     .setOrigin(0.5);
   s.add
     .image(270, 308, win ? "hat" : getCharacter(s.registry.get("character")).id + "-jump", win ? undefined : 63)
-    .setDisplaySize(win ? 288 : 184, win ? 178 : 184);
+    .setDisplaySize(win ? 288 : 184 * character.animationScale.jump, win ? 178 : 184 * character.animationScale.jump);
   s.add
     .text(270, 460, win ? "IMPRESSÃO\nCONCLUÍDA!" : "IMPRESSÃO\nINTERROMPIDA", {
       fontFamily: "Arial",

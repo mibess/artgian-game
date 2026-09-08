@@ -117,10 +117,14 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       texture: this.visualTexture,
       frame: this.visualFrame,
     };
+    const action = pose.texture.endsWith("-jump")
+      ? "jump"
+      : pose.texture.endsWith("-walk") ? "walk" : "idle";
+    const size = 165.6 * this.character.animationScale[action];
     this.visual
       .setPosition(this.x, this.y + 40.5)
       .setTexture(pose.texture, pose.frame)
-      .setDisplaySize(165.6, 165.6)
+      .setDisplaySize(size, size)
       .setFlipX(this.flipX)
       .setAlpha(this.alpha);
   }
