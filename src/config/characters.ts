@@ -13,7 +13,9 @@ export const characters = [
   },
   {
     id: "giulinha", name: "Giulinha", originX: 0.5, originY: 248 / 256,
-    animationScale: { idle: 1, walk: 1, jump: 1 },
+    // The extended jump pose is 188px versus ~213px in idle. Apply one
+    // uniform correction to the entire jump, preserving crouches and poses.
+    animationScale: { idle: 1, walk: 1, jump: 1.13 },
     jumpFrames: { start: 12, apex: 35, fallEnd: 53 },
   },
 ] as const;

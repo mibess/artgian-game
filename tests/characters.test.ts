@@ -16,6 +16,10 @@ test("Every selectable character has three regular 64-frame PNG sheets", () => {
 test("Giulinha preserves the updated sheet baseline and valid animation ranges", () => {
   const giulinha = getCharacter("giulinha");
   assert.equal(giulinha.originY, 248 / 256);
+  assert.equal(giulinha.animationScale.idle, 1);
+  assert.equal(giulinha.animationScale.walk, 1);
+  assert.ok(Math.abs(188 * giulinha.animationScale.jump - 213) < 1,
+    "Giulinha's extended jump pose matches the idle reference size");
   for (const character of characters) {
     const {start, apex, fallEnd} = character.jumpFrames;
     assert.ok(start < apex && apex < fallEnd && fallEnd < 64);
