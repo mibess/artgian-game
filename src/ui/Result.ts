@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { TOTAL_FILAMENTS } from "../systems/LevelSystem";
 export function result(
   s: Phaser.Scene,
   win: boolean,
@@ -29,8 +30,8 @@ export function result(
     })
     .setOrigin(0.5);
   s.add
-    .image(270, 308, win ? "hat" : "char-jump-7")
-    .setDisplaySize(win ? 288 : 118, win ? 178 : 164);
+    .image(270, 308, win ? "hat" : "mib-jump", win ? undefined : 63)
+    .setDisplaySize(win ? 288 : 184, win ? 178 : 184);
   s.add
     .text(270, 460, win ? "IMPRESSÃO\nCONCLUÍDA!" : "IMPRESSÃO\nINTERROMPIDA", {
       fontFamily: "Arial",
@@ -56,7 +57,7 @@ export function result(
     .text(
       270,
       625,
-      `FILAMENTOS  ${data.count} / 15     •     TEMPO  ${String(Math.floor(secs / 60)).padStart(2, "0")}:${String(secs % 60).padStart(2, "0")}`,
+      `FILAMENTOS  ${data.count} / ${TOTAL_FILAMENTS}     •     TEMPO  ${String(Math.floor(secs / 60)).padStart(2, "0")}:${String(secs % 60).padStart(2, "0")}`,
       { fontFamily: "Arial", fontSize: "14px", color: "#e9ce9d" },
     )
     .setOrigin(0.5);
@@ -65,7 +66,7 @@ export function result(
       s.add
         .image(270 + (i - ((data.lives ?? 0) - 1) / 2) * 36, 667, "heart")
         .setDisplaySize(30, 30);
-  if (data.count === 15)
+  if (data.count === TOTAL_FILAMENTS)
     s.add
       .text(270, 709, "✦ FILAMENTO COMPLETO! ✦", {
         fontFamily: "Arial",
@@ -77,7 +78,7 @@ export function result(
     .rectangle(270, 788, 350, 65, 0xe4b56f)
     .setInteractive({ useHandCursor: true });
   s.add
-    .text(270, 788, win ? "PRÓXIMA IMPRESSÃO  →" : "TENTAR NOVAMENTE  ↻", {
+    .text(270, 788, win ? "JOGAR NOVAMENTE  →" : "TENTAR NOVAMENTE  ↻", {
       fontFamily: "Arial",
       fontSize: "17px",
       fontStyle: "bold",
@@ -85,6 +86,9 @@ export function result(
     })
     .setOrigin(0.5);
   b.on("pointerdown", () => s.scene.start("Game"));
+  s.add.text(270, 900, "← Voltar à seleção", { fontFamily: "Arial", fontSize: "17px", color: "#e9ce9d" })
+    .setOrigin(0.5).setInteractive({ useHandCursor: true })
+    .on("pointerdown", () => s.scene.start("Menu"));
   s.add
     .text(
       270,

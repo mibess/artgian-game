@@ -32,7 +32,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       // The character is centered around x=102 and stands near y=238 inside
       // each 256px cell, so anchor the sheets on the physics body's feet.
       .setOrigin(0.4, 0.93)
-      .setDisplaySize(184, 184)
+      .setDisplaySize(165.6, 165.6)
       .setDepth(10);
     const b = this.body as Phaser.Physics.Arcade.Body;
     b.setSize(44, 112).setOffset(28, 28);
@@ -59,9 +59,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       jumped = true;
     }
     this.state =
-      b.velocity.y < -35
+      b.velocity.y < 0
         ? "jump"
-        : b.velocity.y > 65
+        : !grounded
           ? "fall"
           : now < this.landingUntil
             ? "land"
@@ -112,7 +112,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.visual
       .setPosition(this.x, this.y + 40.5)
       .setTexture(pose.texture, pose.frame)
-      .setDisplaySize(184, 184)
+      .setDisplaySize(165.6, 165.6)
       .setFlipX(this.flipX)
       .setAlpha(this.alpha);
   }

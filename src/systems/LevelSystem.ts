@@ -10,7 +10,7 @@ export interface PlatformSpec {
 }
 export const platforms: PlatformSpec[] = [
   { x: 105, y: FLOOR, w: 240, kind: "normal", checkpoint: 0 },
-  ...Array.from({ length: 26 }, (_, i): PlatformSpec => ({
+  ...Array.from({ length: 47 }, (_, i): PlatformSpec => ({
     x:
       i < 4
         ? [275, 265, 330, 180][i]
@@ -29,9 +29,9 @@ export const platforms: PlatformSpec[] = [
               : i % 5 === 3
                 ? "small"
                 : "normal",
-    ...([6, 13, 20].includes(i)
+    ...([6, 13, 20, 27, 34, 41].includes(i)
       ? {
-          checkpoint: [6, 13, 20].indexOf(i) + 1,
+          checkpoint: [6, 13, 20, 27, 34, 41].indexOf(i) + 1,
           w: 175,
           kind: "normal" as const,
         }
@@ -42,6 +42,7 @@ export const platforms: PlatformSpec[] = [
 export function progressAt(y: number) {
   return Math.max(0, Math.min(1, (FLOOR - y) / (FLOOR - TOP)));
 }
-export const collectibleIndices = [
-  1, 2, 4, 6, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27,
-];
+export const collectibleIndices = platforms.flatMap((_, i) =>
+  i > 0 && (i % 2 === 1 || i === platforms.length - 1) ? [i] : [],
+);
+export const TOTAL_FILAMENTS = collectibleIndices.length;

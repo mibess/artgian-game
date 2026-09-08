@@ -7,6 +7,7 @@ import {
   platforms,
   collectibleIndices,
   progressAt,
+  TOTAL_FILAMENTS,
 } from "../systems/LevelSystem";
 import { CheckpointSystem } from "../systems/CheckpointSystem";
 import { PrintingProgressSystem } from "../systems/PrintingProgressSystem";
@@ -117,7 +118,7 @@ export class GameScene extends Phaser.Scene {
         this.collected++;
         this.audio.play("collect");
         this.burst(c.x, c.y, 0xffcc69, 12);
-        if (this.collected === 15) this.hud.message("FILAMENTO COMPLETO! ✦");
+        if (this.collected === TOTAL_FILAMENTS) this.hud.message("FILAMENTO COMPLETO! ✦");
       });
     }
     this.makeHazard("spikes", 450, FLOOR - 28, 174, 28, 0);

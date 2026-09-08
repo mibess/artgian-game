@@ -22,12 +22,13 @@ test("Every consecutive jump has a reachable landing window", () => {
     );
   }
 });
-test("Printing progress is clamped to the level, with 15 unique collectibles", () => {
+test("Printing progress is clamped to the extended level, with 25 unique collectibles", () => {
   assert.equal(progressAt(FLOOR), 0);
   assert.equal(progressAt(TOP), 1);
   assert.equal(progressAt(-900), 1);
   assert.equal(progressAt(9000), 0);
-  assert.equal(new Set(collectibleIndices).size, 15);
+  assert.equal(new Set(collectibleIndices).size, 25);
+  assert.equal(platforms.length, 49);
   for (const i of collectibleIndices) assert.ok(platforms[i]);
 });
 test("Checkpoints advance only and respawn above safe platforms", () => {
@@ -37,5 +38,5 @@ test("Checkpoints advance only and respawn above safe platforms", () => {
   assert.equal(c.y, 1344);
   assert.equal(c.activate(1, 50, 2500), false);
   assert.equal(c.x, 200);
-  assert.equal(platforms.filter((p) => p.checkpoint !== undefined).length, 4);
+  assert.equal(platforms.filter((p) => p.checkpoint !== undefined).length, 7);
 });

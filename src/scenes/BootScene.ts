@@ -33,10 +33,11 @@ export class BootScene extends Phaser.Scene {
       frameHeight: 256,
     });
     this.load.image("workshop-atlas", "assets/workshop-atlas.png");
-    this.load.image("workshop-depth", "assets/workshop-depth.png");
+    this.load.image("workshop-depth", "assets/workshop-clean.png");
+    this.load.image("filament", "assets/filament-real.png");
   }
   create() {
     makeTextures(this);
-    this.scene.start("Game");
+    this.scene.start("Menu");
   }
 }

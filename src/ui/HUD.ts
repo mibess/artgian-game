@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { TOTAL_FILAMENTS } from "../systems/LevelSystem";
 export class HUD {
   hearts: (Phaser.GameObjects.Image | Phaser.GameObjects.Text)[] = [];
   count: Phaser.GameObjects.Text;
@@ -25,7 +26,7 @@ export class HUD {
       .setScrollFactor(0)
       .setDepth(90);
     s.add
-      .image(445, 35, "spool")
+      .image(445, 35, "filament")
       .setDisplaySize(25, 29)
       .setScrollFactor(0)
       .setDepth(91);
@@ -39,7 +40,7 @@ export class HUD {
       .setScrollFactor(0)
       .setDepth(91);
     this.count = s.add
-      .text(466, 32, "0 / 15", {
+      .text(466, 32, `0 / ${TOTAL_FILAMENTS}`, {
         fontFamily: "Arial",
         fontSize: "17px",
         fontStyle: "bold",
@@ -73,7 +74,7 @@ export class HUD {
     s.time.delayedCall(4200, () => this.toast.setAlpha(0));
   }
   update(lives: number, count: number, p: number) {
-    this.count.setText(count + " / 15");
+    this.count.setText(`${count} / ${TOTAL_FILAMENTS}`);
     this.percent.setText(Math.floor(p * 100) + "%");
     this.progress
       .clear()
