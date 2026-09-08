@@ -6,7 +6,7 @@ export class HUD {
   progress: Phaser.GameObjects.Graphics;
   percent: Phaser.GameObjects.Text;
   toast: Phaser.GameObjects.Text;
-  constructor(private s: Phaser.Scene) {
+  constructor(private s: Phaser.Scene, private total = TOTAL_FILAMENTS, hint = "A / D para mover • Espaço para pular") {
     for (let i = 0; i < 3; i++) {
       const h = s.textures.exists("heart")
         ? s.add.image(38 + i * 46, 35, "heart").setDisplaySize(44, 43)
@@ -40,7 +40,7 @@ export class HUD {
       .setScrollFactor(0)
       .setDepth(91);
     this.count = s.add
-      .text(466, 32, `0 / ${TOTAL_FILAMENTS}`, {
+      .text(466, 32, `0 / ${this.total}`, {
         fontFamily: "Arial",
         fontSize: "17px",
         fontStyle: "bold",
@@ -61,12 +61,13 @@ export class HUD {
       .setDepth(91);
     this.progress = s.add.graphics().setScrollFactor(0).setDepth(91);
     this.toast = s.add
-      .text(270, 812, "A / D para mover • Espaço para pular", {
+      .text(270, 800, hint, {
         fontFamily: "Arial",
         fontSize: "12px",
         color: "#f8eedb",
         backgroundColor: "#15212cbb",
         padding: { x: 12, y: 8 },
+        wordWrap: { width: 420 }, align: "center",
       })
       .setOrigin(0.5)
       .setScrollFactor(0)
@@ -74,7 +75,7 @@ export class HUD {
     s.time.delayedCall(4200, () => this.toast.setAlpha(0));
   }
   update(lives: number, count: number, p: number) {
-    this.count.setText(`${count} / ${TOTAL_FILAMENTS}`);
+    this.count.setText(`${count} / ${this.total}`);
     this.percent.setText(Math.floor(p * 100) + "%");
     this.progress
       .clear()

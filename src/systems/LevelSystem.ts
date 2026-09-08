@@ -1,12 +1,13 @@
 import { FLOOR, TOP } from "../config/gameConfig.ts";
 export type PlatformKind =
-  "normal" | "small" | "horizontal" | "vertical" | "temporary" | "boost";
+  "normal" | "small" | "horizontal" | "vertical" | "temporary" | "boost" | "sink" | "beat";
 export interface PlatformSpec {
   x: number;
   y: number;
   w: number;
   kind: PlatformKind;
   checkpoint?: number;
+  phase?: number;
 }
 export const platforms: PlatformSpec[] = [
   { x: 105, y: FLOOR, w: 240, kind: "normal", checkpoint: 0 },

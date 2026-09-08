@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { getLevel, type Level } from "../config/levels";
 /** Independent printer plane: the bed never collides with the playable platforms. */
 export class PrintingProgressSystem {
   lastLayer: Phaser.GameObjects.Text;
@@ -11,7 +12,9 @@ export class PrintingProgressSystem {
   ghost: Phaser.GameObjects.Image;
   bed: Phaser.GameObjects.Image | Phaser.GameObjects.Graphics;
   glow: Phaser.GameObjects.Image | undefined;
+  private level: Level;
   constructor(private s: Phaser.Scene) {
+    this.level = getLevel(s.registry.get("level"));
     const rail = s.add.graphics().setScrollFactor(0).setDepth(-10);
     rail.fillStyle(0x17222d);
     rail.fillRect(180, 20, 330, 16);
@@ -33,15 +36,15 @@ export class PrintingProgressSystem {
           .fillTriangle(235, 174, 471, 174, 500, 251)
           .fillTriangle(235, 174, 500, 251, 213, 251);
     this.ghost = s.add
-      .image(347, 171, "hat")
-      .setDisplaySize(177, 107)
+      .image(347, 224, this.level.product).setOrigin(0.5, 1)
+      .setDisplaySize(this.level.productWidth, this.level.productHeight)
       .setTint(0x719ecd)
       .setAlpha(0.12)
       .setScrollFactor(0)
       .setDepth(-8);
     this.hat = s.add
-      .image(347, 171, "hat")
-      .setDisplaySize(177, 107)
+      .image(347, 224, this.level.product).setOrigin(0.5, 1)
+      .setDisplaySize(this.level.productWidth, this.level.productHeight)
       .setScrollFactor(0)
       .setDepth(-7);
     this.mask = s.make.graphics({ x: 0, y: 0 }).setScrollFactor(0);
@@ -102,11 +105,11 @@ export class PrintingProgressSystem {
   update(progress: number, time: number) {
     this.value = Math.max(this.value, progress);
     const base = 224,
-      printedHeight = 107 * this.value;
+      printedHeight = this.level.productHeight * this.value;
     this.mask
       .clear()
       .fillStyle(0xffffff)
-      .fillRect(250, base - printedHeight, 200, printedHeight);
+      .fillRect(347 - this.level.productWidth / 2, base - printedHeight, this.level.productWidth, printedHeight);
     this.head.setPosition(
       345 + Math.sin(time / 650) * 38,
       base - printedHeight - 70,
@@ -136,7 +139,7 @@ export class PrintingProgressSystem {
         ? "IMPRESSÃO CONCLUÍDA!"
         : this.value > 0.75
           ? "Quase lá! ☺"
-          : "CAMADA POR CAMADA",
+          : this.level.productName.toUpperCase(),
     );
   }
   destroy() {

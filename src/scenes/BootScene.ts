@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import { makeTextures } from "../art/textures";
 import { characters } from "../config/characters";
 import { prepareGiulinhaSheets } from "../art/characterSheets";
+import { loadLevelAssets } from "../art/levelAssets";
 export class BootScene extends Phaser.Scene {
   constructor() {
     super("Boot");
@@ -37,10 +38,16 @@ export class BootScene extends Phaser.Scene {
     this.load.image("workshop-atlas", "assets/workshop-atlas.png");
     this.load.image("workshop-depth", "assets/workshop-clean.png");
     this.load.image("filament", "assets/filament-real.png");
+    for (const theme of ["home", "studio"]) {
+      this.load.image(theme + "-background", "assets/levels/" + theme + "/background.png");
+      this.load.image(theme + "-atlas-source", "assets/levels/" + theme + "/assets.png");
+      this.load.image(theme + "-product-source", "assets/levels/" + theme + "/product.png");
+    }
   }
   create() {
     makeTextures(this);
     prepareGiulinhaSheets(this);
+    loadLevelAssets(this);
     this.scene.start("Menu");
   }
 }

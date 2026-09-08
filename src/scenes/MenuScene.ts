@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { platforms, TOTAL_FILAMENTS } from "../systems/LevelSystem";
+import { getLevel, levels } from "../config/levels";
 import { characters, getCharacter } from "../config/characters";
 
 export class MenuScene extends Phaser.Scene {
@@ -7,18 +7,13 @@ export class MenuScene extends Phaser.Scene {
   constructor() { super("Menu"); }
   create() {
     this.portraits = [];
-    this.add.image(270, 480, "workshop-depth").setDisplaySize(640, 960);
+    const backdrop = this.add.image(270, 480, getLevel(this.registry.get("level")).background).setDisplaySize(640, 960);
     this.add.rectangle(270, 480, 540, 960, 0x08131d, 0.78);
     const text = (x: number, y: number, value: string, size: number, color = "#edf3f2", bold = false) =>
       this.add.text(x, y, value, { fontFamily: "Arial", fontSize: size + "px", color, fontStyle: bold ? "bold" : "normal" });
-    const panel = (x: number, y: number, w: number, h: number) => {
-      const g = this.add.graphics();
-      g.fillStyle(0x142630, 0.94).fillRoundedRect(x, y, w, h, 22);
-      g.lineStyle(1.5, 0xe7ba79, 0.7).strokeRoundedRect(x, y, w, h, 22);
-    };
     text(38, 38, "A R T G I A N", 18, "#e7ba79", true);
     text(38, 87, "Camada\npor camada.", 49, "#f2f4ee", true).setLineSpacing(-3);
-    text(40, 207, "Uma oficina. Muitas conquistas.", 17, "#9cb1bb");
+    text(40, 207, "Novos lugares. Muitas conquistas.", 17, "#9cb1bb");
     text(40, 261, "01  PERSONAGEM", 14, "#a9bdc6", true);
     const selected = getCharacter(this.registry.get("character"));
     this.registry.set("character", selected.id);
@@ -62,14 +57,43 @@ export class MenuScene extends Phaser.Scene {
       this.input.keyboard?.off("keydown-RIGHT", next);
     });
     text(40, 563, "02  FASE", 14, "#a9bdc6", true);
-    panel(36, 592, 468, 153);
-    this.add.image(111, 668, "workshop-depth").setDisplaySize(112, 116);
-    text(190, 611, "OFICINA 01", 13, "#e7ba79", true);
-    text(190, 639, "A primeira impressão", 21, "#f2f4ee", true);
-    text(190, 675, platforms.length + " plataformas  ·  " + TOTAL_FILAMENTS + " filamentos", 14, "#a9bdc6");
-    const levelBadge = text(190, 704, "✓ SELECIONADA", 12, "#e7ba79", true);
-    this.add.zone(270, 668, 468, 153).setInteractive({ useHandCursor: true })
-      .on("pointerdown", () => levelBadge.setText("✓ OFICINA SELECIONADA"));
+    const stageCards = levels.map((level, index) => {
+      const x = 36 + index * 160, center = x + 74;
+      const background = this.add.graphics();
+      text(center, 612, level.name, 20, "#f2f4ee", true).setOrigin(0.5);
+      const scale = Math.min(108 / level.productWidth, 63 / level.productHeight);
+      this.add.image(center, 663, level.product)
+        .setDisplaySize(level.productWidth * scale, level.productHeight * scale);
+      text(center, 706, level.productName, 12, "#b9ccd4").setOrigin(0.5);
+      const badge = text(center, 730, "", 12, "#e7ba79", true).setOrigin(0.5);
+      const zone = this.add.zone(center, 668, 148, 153).setInteractive({ useHandCursor: true });
+      return { level, x, background, badge, zone };
+    });
+    const stageInfo = text(270, 764, "", 13, "#b9ccd4").setOrigin(0.5);
+    const selectLevel = (id: string) => {
+      const level = getLevel(id);
+      this.registry.set("level", level.id);
+      backdrop.setTexture(level.background);
+      stageInfo.setText(level.name + " · " + level.platforms.length + " plataformas · " + level.collectibles.length + " filamentos");
+      for (const card of stageCards) {
+        const active = card.level.id === level.id;
+        card.background.clear().fillStyle(active ? 0x20343d : 0x142630, 0.94)
+          .fillRoundedRect(card.x, 592, 148, 153, 18)
+          .lineStyle(active ? 2 : 1, active ? card.level.accent : 0x30444f)
+          .strokeRoundedRect(card.x, 592, 148, 153, 18);
+        card.badge.setText(active ? "✓ SELECIONADA" : "SELECIONAR");
+      }
+    };
+    for (const card of stageCards) card.zone.on("pointerdown", () => selectLevel(card.level.id));
+    selectLevel(getLevel(this.registry.get("level")).id);
+    const nextLevel = () => selectLevel(levels[(levels.findIndex((level) => level.id === this.registry.get("level")) + 1) % levels.length].id);
+    const previousLevel = () => selectLevel(levels[(levels.findIndex((level) => level.id === this.registry.get("level")) + levels.length - 1) % levels.length].id);
+    this.input.keyboard?.on("keydown-DOWN", nextLevel);
+    this.input.keyboard?.on("keydown-UP", previousLevel);
+    this.events.once("shutdown", () => {
+      this.input.keyboard?.off("keydown-DOWN", nextLevel);
+      this.input.keyboard?.off("keydown-UP", previousLevel);
+    });
     const button = this.add.graphics();
     button.fillStyle(0xe7ba79).fillRoundedRect(36, 785, 468, 70, 18);
     text(270, 820, "COMEÇAR A SUBIR  →", 19, "#13232d", true).setOrigin(0.5);

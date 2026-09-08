@@ -3,12 +3,8 @@ import { W, H, WORLD_H, FLOOR, TOP } from "../config/gameConfig";
 import { Player } from "../entities/Player";
 import { Platform } from "../entities/Platform";
 import { Collectible } from "../entities/Collectible";
-import {
-  platforms,
-  collectibleIndices,
-  progressAt,
-  TOTAL_FILAMENTS,
-} from "../systems/LevelSystem";
+import { progressAt } from "../systems/LevelSystem";
+import { getLevel, hazardState, type HazardKind } from "../config/levels";
 import { CheckpointSystem } from "../systems/CheckpointSystem";
 import { PrintingProgressSystem } from "../systems/PrintingProgressSystem";
 import { AudioSystem } from "../systems/AudioSystem";
@@ -18,16 +14,19 @@ import { workshop } from "../art/Workshop";
 import type { VisualQA } from "../dev/VisualQA";
 interface Hazard {
   obj: Phaser.GameObjects.Rectangle;
-  kind: "laser" | "head" | "spikes" | "arm";
+  kind: HazardKind;
   x: number;
   y: number;
   active: boolean;
   phase: number;
   art: Phaser.GameObjects.Container;
+  effect?: Phaser.GameObjects.Graphics;
+  warning?: Phaser.GameObjects.Text;
 }
 export class GameScene extends Phaser.Scene {
   qa?: VisualQA;
   player!: Player;
+  level = getLevel(undefined);
   ledges: Platform[] = [];
   hud!: HUD;
   controls!: MobileControls;
@@ -50,6 +49,9 @@ export class GameScene extends Phaser.Scene {
     super("Game");
   }
   create() {
+    this.time.paused = false;
+    this.physics.resume();
+    this.level = getLevel(this.registry.get("level"));
     this.qa = undefined;
     this.ledges = [];
     this.hazards = [];
@@ -67,7 +69,7 @@ export class GameScene extends Phaser.Scene {
     this.physics.world.setBounds(0, 0, W, WORLD_H);
     workshop(this);
     this.printer = new PrintingProgressSystem(this);
-    this.ledges = platforms.map((p) => {
+    this.ledges = this.level.platforms.map((p) => {
       const a = new Platform(this, p);
       if (p.checkpoint !== undefined && p.checkpoint > 0) {
         this.add
@@ -93,6 +95,10 @@ export class GameScene extends Phaser.Scene {
           .text(p.x, p.y - 25, "↑ ↑ ↑", { fontSize: "23px", color: "#66ffe0" })
           .setOrigin(0.5)
           .setDepth(6);
+      if (p.kind === "sink" || p.kind === "beat")
+        this.add.text(p.x, p.y + 26, p.kind === "sink" ? "CEDE AO PESO" : "NO RITMO", {
+          fontFamily: "Arial", fontSize: "12px", color: p.kind === "sink" ? "#c5e5bc" : "#d7bbff",
+        }).setOrigin(0.5).setDepth(6);
       return a;
     });
     this.player = new Player(this, 105, FLOOR - 57);
@@ -109,8 +115,8 @@ export class GameScene extends Phaser.Scene {
       },
       this,
     );
-    for (const index of collectibleIndices) {
-      const p = platforms[index];
+    for (const index of this.level.collectibles) {
+      const p = this.level.platforms[index];
       const c = new Collectible(this, p.x, p.y - 63);
       this.physics.add.overlap(this.player, c, () => {
         if (this.locked || !c.active) return;
@@ -118,22 +124,17 @@ export class GameScene extends Phaser.Scene {
         this.collected++;
         this.audio.play("collect");
         this.burst(c.x, c.y, 0xffcc69, 12);
-        if (this.collected === TOTAL_FILAMENTS) this.hud.message("FILAMENTO COMPLETO! ✦");
+        if (this.collected === this.level.collectibles.length) this.hud.message("FILAMENTO COMPLETO! ✦");
       });
     }
-    this.makeHazard("spikes", 450, FLOOR - 28, 174, 28, 0);
-    this.makeHazard("laser", 340, 2100, 150, 7, 0);
-    this.makeHazard("laser", 150, 1300, 170, 7, 1700);
-    this.makeHazard("spikes", 475, 1600, 80, 20, 0);
-    this.makeHazard("spikes", 49, 1070, 80, 20, 0);
-    this.makeHazard("head", 270, 640, 65, 45, 0);
-    this.makeHazard("arm", 430, 1850, 65, 20, 0);
+    for (const hazard of this.level.hazards)
+      this.makeHazard(hazard.kind, hazard.x, hazard.y, hazard.w, hazard.h, hazard.phase);
     if (import.meta.env.DEV && new URLSearchParams(location.search).has("qa")) {
       void import("../dev/VisualQA").then(({ VisualQA }) => {
         this.qa = new VisualQA(this);
       });
     }
-    this.hud = new HUD(this);
+    this.hud = new HUD(this, this.level.collectibles.length, this.level.hint);
     this.controls = new MobileControls(this);
     this.keys = this.input.keyboard!.addKeys(
       "A,D,LEFT,RIGHT,SPACE,ESC",
@@ -144,6 +145,11 @@ export class GameScene extends Phaser.Scene {
       .setDepth(110)
       .setInteractive({ useHandCursor: true })
       .on("pointerdown", () => this.togglePause());
+    this.add.text(270, 862, "← SELEÇÃO", {
+      fontFamily: "Arial", fontSize: "13px", color: "#b9cbd3", backgroundColor: "#101e2bdd",
+      padding: { x: 10, y: 8 },
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(110).setInteractive({ useHandCursor: true })
+      .on("pointerdown", () => this.scene.start("Menu"));
     const sound = this.add
       .text(243, 916, "♫", { fontSize: "23px", color: "#c4dce7" })
       .setScrollFactor(0)
@@ -212,6 +218,29 @@ export class GameScene extends Phaser.Scene {
   ) {
     const obj = this.add.rectangle(x, y, w, h, 0xff5362, 0);
     const art = this.add.container(x, y).setDepth(8);
+    if (["steam", "pendant", "sound", "cymbal"].includes(kind)) {
+      let effect: Phaser.GameObjects.Graphics | undefined;
+      let warning: Phaser.GameObjects.Text | undefined;
+      if (kind === "steam" || kind === "sound") {
+        effect = this.add.graphics();
+        art.add(effect);
+        art.add(this.add.image(0, kind === "steam" ? h / 2 + 21 : 0, kind === "steam" ? "home-kettle" : "studio-speaker")
+          .setDisplaySize(kind === "steam" ? 62 : 58, kind === "steam" ? 58 : 42));
+        warning = this.add.text(0, -h / 2 - 18, "!", {
+          fontFamily: "Arial", fontSize: "24px", fontStyle: "bold", color: "#ffcf78",
+        }).setOrigin(0.5);
+        art.add(warning);
+      } else {
+        if (kind === "pendant") {
+          effect = this.add.graphics();
+          art.add(effect);
+        }
+        art.add(this.add.image(0, 0, kind === "pendant" ? "home-lamp" : "studio-cymbal")
+          .setDisplaySize(kind === "pendant" ? 52 : 65, kind === "pendant" ? 70 : 43));
+      }
+      this.hazards.push({ obj, art, kind, x, y, active: false, phase, effect, warning });
+      return;
+    }
     if (kind === "laser") {
       art.add(
         this.add
@@ -338,7 +367,7 @@ export class GameScene extends Phaser.Scene {
       if (this.support && this.support.active) {
         const b = this.player.body as Phaser.Physics.Arcade.Body;
         if (
-          (b.blocked.down || b.touching.down) &&
+          this.support.body?.enable && (b.blocked.down || b.touching.down) &&
           Math.abs(b.bottom - (this.support.y - 13.5)) < 15
         ) {
           this.player.x += this.support.dx;
@@ -387,10 +416,36 @@ export class GameScene extends Phaser.Scene {
     }
     for (const h of this.hazards) {
       const was = h.active;
-      h.active = h.kind !== "laser" || (this.elapsed + h.phase) % 3400 < 1600;
+      const pulse = hazardState(h.kind, this.elapsed, h.phase);
+      h.active = pulse.active;
       if (h.kind === "head") h.obj.x = h.x + Math.sin(this.elapsed / 950) * 175;
       if (h.kind === "arm") h.obj.x = h.x + Math.sin(this.elapsed / 800) * 70;
-      h.art.setPosition(h.obj.x, h.obj.y).setAlpha(h.active ? 1 : 0.15);
+      if (h.kind === "pendant") {
+        h.obj.x = h.x + Math.sin((this.elapsed + h.phase) / 1100) * 115;
+        h.obj.y = h.y + (1 - Math.cos((this.elapsed + h.phase) / 1100)) * 16;
+        h.effect?.clear().lineStyle(2, 0xaaa28d).lineBetween(h.x - h.obj.x, -105, 0, -22);
+      }
+      if (h.kind === "cymbal") {
+        h.obj.x = h.x + Math.sin((this.elapsed + h.phase) / 750) * 140;
+        h.art.setAngle(Math.sin((this.elapsed + h.phase) / 250) * 16);
+      }
+      if (h.kind === "steam" || h.kind === "sound") {
+        h.effect!.clear();
+        h.warning?.setVisible(pulse.warning).setAlpha(0.65 + Math.sin(this.elapsed / 70) * 0.35);
+        if (h.active) {
+          if (h.kind === "steam") {
+            h.effect!.fillStyle(0xeaf1dc, 0.42).fillRoundedRect(-h.obj.width / 2, -h.obj.height / 2, h.obj.width, h.obj.height, 20);
+            for (let i = 0; i < 5; i++)
+              h.effect!.fillStyle(0xffffff, 0.3).fillCircle(Math.sin(this.elapsed / 170 + i) * 24,
+                h.obj.height / 2 - ((this.elapsed / 10 + i * 27) % h.obj.height), 13);
+          } else {
+            for (let i = 0; i < 3; i++)
+              h.effect!.lineStyle(3, 0xe7a6ff, 0.75 - i * 0.18)
+                .strokeCircle(0, 0, 15 + ((this.elapsed / 25 + i * 12) % 29));
+          }
+        }
+      }
+      h.art.setPosition(h.obj.x, h.obj.y).setAlpha(["steam", "sound"].includes(h.kind) ? 1 : h.active ? 1 : 0.15);
       if (
         h.kind === "laser" &&
         h.active &&

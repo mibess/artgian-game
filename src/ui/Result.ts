@@ -1,15 +1,17 @@
 import Phaser from "phaser";
 import { getCharacter } from "../config/characters";
-import { TOTAL_FILAMENTS } from "../systems/LevelSystem";
+import { getLevel } from "../config/levels";
 export function result(
   s: Phaser.Scene,
   win: boolean,
   data: { count: number; time: number; lives?: number },
 ) {
   const character = getCharacter(s.registry.get("character"));
+  const level = getLevel(s.registry.get("level"));
+  const productScale = Math.min(288 / level.productWidth, 178 / level.productHeight);
   s.cameras.main.setBackgroundColor("#0d1b26");
   s.add
-    .image(270, 480, "workshop-depth")
+    .image(270, 480, level.background)
     .setDisplaySize(600, 1066)
     .setAlpha(0.22);
   s.add.rectangle(270, 480, 540, 960, 0x08111c, 0.74);
@@ -24,7 +26,7 @@ export function result(
     })
     .setOrigin(0.5);
   s.add
-    .text(270, 150, "CAMADA POR CAMADA", {
+    .text(270, 150, level.name.toUpperCase(), {
       fontFamily: "Arial",
       fontSize: "12px",
       letterSpacing: 3,
@@ -32,8 +34,9 @@ export function result(
     })
     .setOrigin(0.5);
   s.add
-    .image(270, 308, win ? "hat" : getCharacter(s.registry.get("character")).id + "-jump", win ? undefined : 63)
-    .setDisplaySize(win ? 288 : 184 * character.animationScale.jump, win ? 178 : 184 * character.animationScale.jump);
+    .image(270, 308, win ? level.product : character.id + "-jump", win ? undefined : 63)
+    .setDisplaySize(win ? level.productWidth * productScale : 184 * character.animationScale.jump,
+      win ? level.productHeight * productScale : 184 * character.animationScale.jump);
   s.add
     .text(270, 460, win ? "IMPRESSÃO\nCONCLUÍDA!" : "IMPRESSÃO\nINTERROMPIDA", {
       fontFamily: "Arial",
@@ -49,7 +52,7 @@ export function result(
       270,
       555,
       win
-        ? "Pequenas camadas. Grandes conquistas."
+        ? "Impressão concluída! Mais uma conquista."
         : "Cada tentativa é uma nova camada.",
       { fontFamily: "Arial", fontSize: "16px", color: "#9db1bc" },
     )
@@ -59,7 +62,7 @@ export function result(
     .text(
       270,
       625,
-      `FILAMENTOS  ${data.count} / ${TOTAL_FILAMENTS}     •     TEMPO  ${String(Math.floor(secs / 60)).padStart(2, "0")}:${String(secs % 60).padStart(2, "0")}`,
+      `FILAMENTOS  ${data.count} / ${level.collectibles.length}     •     TEMPO  ${String(Math.floor(secs / 60)).padStart(2, "0")}:${String(secs % 60).padStart(2, "0")}`,
       { fontFamily: "Arial", fontSize: "14px", color: "#e9ce9d" },
     )
     .setOrigin(0.5);
@@ -68,7 +71,7 @@ export function result(
       s.add
         .image(270 + (i - ((data.lives ?? 0) - 1) / 2) * 36, 667, "heart")
         .setDisplaySize(30, 30);
-  if (data.count === TOTAL_FILAMENTS)
+  if (data.count === level.collectibles.length)
     s.add
       .text(270, 709, "✦ FILAMENTO COMPLETO! ✦", {
         fontFamily: "Arial",
@@ -96,8 +99,8 @@ export function result(
       270,
       851,
       win
-        ? "Por enquanto, pratique nesta impressão."
-        : "A oficina espera por você.",
+        ? "Escolha outro cenário e uma nova impressão."
+        : "Uma nova tentativa espera por você.",
       { fontFamily: "Arial", fontSize: "12px", color: "#738d9c" },
     )
     .setOrigin(0.5);
