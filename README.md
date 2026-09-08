@@ -1,4 +1,4 @@
-# Camada por camada — Artgian
+# Artgian Jump
 
 MVP de plataforma vertical em Phaser 3, TypeScript e Vite. Resolução lógica 540 × 960 (9:16), redimensionada proporcionalmente. Uma fase com 28 plataformas, 15 filamentos, 3 vidas e checkpoints aproximadamente em 25%, 50% e 75%.
 

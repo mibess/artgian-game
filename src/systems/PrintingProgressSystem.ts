@@ -67,7 +67,7 @@ export class PrintingProgressSystem {
       .setDepth(-6);
     this.light = s.add.graphics().setScrollFactor(0).setDepth(-5);
     this.label = s.add
-      .text(282, 242, "CAMADA POR CAMADA", {
+      .text(282, 242, "ARTGIAN JUMP", {
         fontFamily: "Trebuchet MS",
         fontStyle: "italic",
         fontSize: "14px",

@@ -12,7 +12,7 @@ export const characters = [
     jumpFrames: { start: 12, apex: 35, fallEnd: 53 },
   },
   {
-    id: "giulinha", name: "Giulinha", originX: 0.5, originY: 244 / 256,
+    id: "giulinha", name: "Giulinha", originX: 0.5, originY: 248 / 256,
     animationScale: { idle: 1, walk: 1, jump: 1 },
     jumpFrames: { start: 12, apex: 35, fallEnd: 53 },
   },

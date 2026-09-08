@@ -4,110 +4,164 @@ import { characters, getCharacter } from "../config/characters";
 
 export class MenuScene extends Phaser.Scene {
   private portraits: Phaser.GameObjects.Image[] = [];
+  private reducedMotion = false;
+  private starting = false;
   constructor() { super("Menu"); }
   create() {
     this.portraits = [];
-    const backdrop = this.add.image(270, 480, getLevel(this.registry.get("level")).background).setDisplaySize(640, 960);
-    this.add.rectangle(270, 480, 540, 960, 0x08131d, 0.78);
-    const text = (x: number, y: number, value: string, size: number, color = "#edf3f2", bold = false) =>
-      this.add.text(x, y, value, { fontFamily: "Arial", fontSize: size + "px", color, fontStyle: bold ? "bold" : "normal" });
-    text(38, 38, "A R T G I A N", 18, "#e7ba79", true);
-    text(38, 87, "Camada\npor camada.", 49, "#f2f4ee", true).setLineSpacing(-3);
-    text(40, 207, "Novos lugares. Muitas conquistas.", 17, "#9cb1bb");
-    text(40, 261, "01  PERSONAGEM", 14, "#a9bdc6", true);
+    this.starting = false;
+    this.reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    this.cameras.main.resetFX();
+    this.input.enabled = true;
+    const duration = this.reducedMotion ? 0 : 280;
+    const text = (x: number, y: number, value: string, size: number, color = "#f2fbf8", bold = false) =>
+      this.add.text(x, y, value, { fontFamily: "Arial", fontSize: size + "px", color,
+        fontStyle: bold ? "bold" : "normal" }).setOrigin(0.5);
+    this.add.image(270, 480, "jump-title").setDisplaySize(540, 960);
+    const shade = this.add.graphics();
+    shade.fillGradientStyle(0x062b33, 0x062b33, 0x041b25, 0x041b25, 0, 0, 1, 1)
+      .fillRect(0, 440, 540, 140);
+    shade.fillStyle(0x041b25).fillRect(0, 580, 540, 380);
+    if (!this.reducedMotion) {
+      for (let i = 0; i < 12; i++) {
+        const mote = this.add.circle(35 + (i * 97) % 470, 80 + (i * 43) % 360, i % 3 + 1,
+          i % 2 ? 0xffce76 : 0x87f0e1, 0.35);
+        this.tweens.add({ targets: mote, y: mote.y - 38, alpha: 0, duration: 2100 + i * 170,
+          delay: i * 140, repeat: -1, yoyo: true, ease: "Sine.InOut" });
+      }
+    }
+    text(270, 506, "ESCOLHA QUEM VAI SALTAR", 14, "#d9fff4", true)
+      .setShadow(0, 2, "#031a23", 5, true, true);
     const selected = getCharacter(this.registry.get("character"));
-    this.registry.set("character", selected.id);
-    const cardGap = 12;
-    const cardWidth = (468 - cardGap * (characters.length - 1)) / characters.length;
+    const colors = [0x71e6df, 0xcbb2ff, 0xffb9d8];
     const cards = characters.map((character, index) => {
-      const x = 36 + index * (cardWidth + cardGap);
-      const center = x + cardWidth / 2;
-      const background = this.add.graphics();
-      const portrait = this.add.image(center, 468, character.id + "-idle", 0)
-        .setOrigin(character.originX, character.originY).setDisplaySize(168, 168);
+      const x = 108 + index * 162;
+      const root = this.add.container(x, 439);
+      const halo = this.add.ellipse(0, -62, 128, 160, colors[index], 0.12);
+      const ring = this.add.ellipse(0, 0, 110, 18, colors[index], 0.16).setStrokeStyle(2, colors[index], 0.4);
+      const portrait = this.add.image(0, 0, character.id + "-idle", 0)
+        .setOrigin(character.originX, character.originY).setDisplaySize(190, 190);
       this.portraits.push(portrait);
-      text(center, 312, character.name, 23, "#f2f4ee", true).setOrigin(0.5);
-      const badge = text(center, 507, "", 12, "#e7ba79", true).setOrigin(0.5);
-      const zone = this.add.zone(center, 412, cardWidth, 244).setInteractive({ useHandCursor: true });
-      return { character, x, background, badge, zone };
+      const pill = this.add.graphics();
+      const label = text(0, 36, character.name, 20, "#fff6df", true);
+      root.add([halo, ring, portrait, pill, label]);
+      const zone = this.add.zone(x, 394, 148, 220).setInteractive({ useHandCursor: true });
+      return { character, root, portrait, halo, ring, pill, label, zone };
     });
-    const select = (id: string) => {
+    const selectCharacter = (id: string, animate = true) => {
+      if (this.starting) return;
       this.registry.set("character", id);
       for (const card of cards) {
         const active = card.character.id === id;
-        card.background.clear().fillStyle(active ? 0x20343d : 0x142630, 0.94)
-          .fillRoundedRect(card.x, 290, cardWidth, 244, 22)
-          .lineStyle(active ? 2 : 1, active ? 0xe7ba79 : 0x30444f)
-          .strokeRoundedRect(card.x, 290, cardWidth, 244, 22);
-        card.badge.setText(active ? "✓ SELECIONADO" : "SELECIONAR");
+        card.pill.clear().fillStyle(active ? 0xffce79 : 0x0b3540, 0.96)
+          .fillRoundedRect(-65, 20, 130, 34, 17);
+        card.label.setText((active ? "✓ " : "") + card.character.name).setColor(active ? "#172d30" : "#d7edee");
+        this.tweens.killTweensOf(card.portrait);
+        this.tweens.add({ targets: card.portrait, scaleX: (active ? 212 : 185) / 256,
+          scaleY: (active ? 212 : 185) / 256, alpha: active ? 1 : 0.82,
+          duration: animate ? duration : 0, ease: "Back.Out" });
+        card.halo.setAlpha(active ? 1 : 0.18);
+        card.ring.setAlpha(active ? 1 : 0.35);
+        card.portrait.setY(0);
+        if (active && animate && !this.reducedMotion)
+          this.tweens.add({ targets: card.portrait, y: -16, duration: 180, yoyo: true, ease: "Sine.Out" });
       }
     };
-    for (const card of cards) card.zone.on("pointerdown", () => select(card.character.id));
-    select(selected.id);
-    const cycle = (direction: number) => {
-      const index = characters.findIndex((character) => character.id === this.registry.get("character"));
-      select(characters[(index + direction + characters.length) % characters.length].id);
-    };
-    const previous = () => cycle(-1);
-    const next = () => cycle(1);
-    this.input.keyboard?.on("keydown-LEFT", previous);
-    this.input.keyboard?.on("keydown-RIGHT", next);
-    this.events.once("shutdown", () => {
-      this.input.keyboard?.off("keydown-LEFT", previous);
-      this.input.keyboard?.off("keydown-RIGHT", next);
-    });
-    text(40, 563, "02  FASE", 14, "#a9bdc6", true);
+    cards.forEach(card => card.zone.on("pointerdown", () => selectCharacter(card.character.id)));
+    selectCharacter(selected.id, false);
+    text(35, 538, "ESCOLHA SEU MUNDO", 15, "#a8d9d9", true).setOrigin(0, 0.5);
+    text(504, 538, "3 FASES", 12, "#6faaaa", true).setOrigin(1, 0.5);
     const stageCards = levels.map((level, index) => {
-      const x = 36 + index * 160, center = x + 74;
-      const background = this.add.graphics();
-      text(center, 612, level.name, 20, "#f2f4ee", true).setOrigin(0.5);
-      const scale = Math.min(108 / level.productWidth, 63 / level.productHeight);
-      this.add.image(center, 663, level.product)
-        .setDisplaySize(level.productWidth * scale, level.productHeight * scale);
-      text(center, 706, level.productName, 12, "#b9ccd4").setOrigin(0.5);
-      const badge = text(center, 730, "", 12, "#e7ba79", true).setOrigin(0.5);
-      const zone = this.add.zone(center, 668, 148, 153).setInteractive({ useHandCursor: true });
-      return { level, x, background, badge, zone };
+      const x = 108 + index * 162, root = this.add.container(x, 651);
+      const border = this.add.graphics();
+      const preview = this.add.image(0, -18, level.background).setDisplaySize(138, 96);
+      const tint = this.add.rectangle(0, -18, 138, 96, 0x061e29, 0.23);
+      const scale = Math.min(103 / level.productWidth, 65 / level.productHeight);
+      const product = this.add.image(0, -16, level.product).setDisplaySize(level.productWidth * scale, level.productHeight * scale);
+      const label = text(0, 53, level.name, 20, "#f3f9f6", true);
+      const badge = text(53, -65, "✓", 17, "#132d35", true);
+      const badgeBg = this.add.circle(53, -65, 12, 0xffce79);
+      root.add([border, preview, tint, product, label, badgeBg, badge]);
+      const zone = this.add.zone(x, 651, 148, 166).setInteractive({ useHandCursor: true });
+      return { level, root, border, badge, badgeBg, zone };
     });
-    const stageInfo = text(270, 764, "", 13, "#b9ccd4").setOrigin(0.5);
-    const selectLevel = (id: string) => {
+    const productLabel = text(270, 754, "", 16, "#ffdc9e", true);
+    const hint = text(270, 787, "", 14, "#a6c7ce").setWordWrapWidth(456).setAlign("center");
+    const selectLevel = (id: string, animate = true) => {
+      if (this.starting) return;
       const level = getLevel(id);
       this.registry.set("level", level.id);
-      backdrop.setTexture(level.background);
-      stageInfo.setText(level.name + " · " + level.platforms.length + " plataformas · " + level.collectibles.length + " filamentos");
+      productLabel.setText("NA IMPRESSORA  ·  " + level.productName.toUpperCase());
+      hint.setText(level.hint);
+      if (animate && !this.reducedMotion) {
+        this.tweens.killTweensOf([productLabel, hint]);
+        productLabel.setAlpha(0); hint.setAlpha(0);
+        this.tweens.add({ targets: [productLabel, hint], alpha: 1, duration });
+      }
       for (const card of stageCards) {
         const active = card.level.id === level.id;
-        card.background.clear().fillStyle(active ? 0x20343d : 0x142630, 0.94)
-          .fillRoundedRect(card.x, 592, 148, 153, 18)
-          .lineStyle(active ? 2 : 1, active ? card.level.accent : 0x30444f)
-          .strokeRoundedRect(card.x, 592, 148, 153, 18);
-        card.badge.setText(active ? "✓ SELECIONADA" : "SELECIONAR");
+        card.border.clear().fillStyle(active ? 0x16454c : 0x0c2b37)
+          .fillRoundedRect(-74, -83, 148, 166, 18)
+          .lineStyle(active ? 3 : 1, active ? 0xffce79 : 0x28505a)
+          .strokeRoundedRect(-74, -83, 148, 166, 18);
+        card.badge.setVisible(active); card.badgeBg.setVisible(active);
+        this.tweens.killTweensOf(card.root);
+        this.tweens.add({ targets: card.root, y: active ? 643 : 651,
+          alpha: active ? 1 : 0.78, duration: animate ? duration : 0, ease: "Cubic.Out" });
       }
     };
-    for (const card of stageCards) card.zone.on("pointerdown", () => selectLevel(card.level.id));
-    selectLevel(getLevel(this.registry.get("level")).id);
-    const nextLevel = () => selectLevel(levels[(levels.findIndex((level) => level.id === this.registry.get("level")) + 1) % levels.length].id);
-    const previousLevel = () => selectLevel(levels[(levels.findIndex((level) => level.id === this.registry.get("level")) + levels.length - 1) % levels.length].id);
-    this.input.keyboard?.on("keydown-DOWN", nextLevel);
-    this.input.keyboard?.on("keydown-UP", previousLevel);
+    stageCards.forEach(card => card.zone.on("pointerdown", () => selectLevel(card.level.id)));
+    selectLevel(getLevel(this.registry.get("level")).id, false);
+    const button = this.add.container(270, 859);
+    const buttonArt = this.add.graphics().fillStyle(0xa65c25).fillRoundedRect(-234, -31, 468, 70, 22)
+      .fillStyle(0xffc568).fillRoundedRect(-234, -38, 468, 70, 22)
+      .lineStyle(2, 0xffe0a2).strokeRoundedRect(-232, -36, 464, 66, 21);
+    button.add([buttonArt, text(0, -3, "VAMOS SALTAR!  →", 25, "#183136", true)]);
+    if (!this.reducedMotion) this.tweens.add({ targets: button, scaleX: 1.012, scaleY: 1.025,
+      duration: 1250, yoyo: true, repeat: -1, ease: "Sine.InOut" });
+    const start = () => {
+      if (this.starting) return;
+      this.starting = true;
+      this.input.enabled = false;
+      if (this.reducedMotion) { this.scene.start("Game"); return; }
+      const hero = cards.find(card => card.character.id === this.registry.get("character"))!.portrait;
+      this.tweens.killTweensOf(hero);
+      this.tweens.add({ targets: hero, y: -100, alpha: 0, duration: 330, ease: "Cubic.In" });
+      this.cameras.main.fadeOut(380, 4, 27, 37);
+      this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => this.scene.start("Game"));
+    };
+    this.add.zone(270, 859, 468, 78).setInteractive({ useHandCursor: true })
+      .on("pointerdown", start).on("pointerover", () => buttonArt.setAlpha(0.9))
+      .on("pointerout", () => buttonArt.setAlpha(1));
+    text(270, 919, "← → personagem   ·   ↑ ↓ fase   ·   Enter jogar", 13, "#88b5bf");
+    text(270, 942, "A / D para mover · Espaço para pular · Controles no celular", 12, "#6d98a5");
+    const cycleCharacter = (direction: number) => {
+      const index = characters.findIndex(c => c.id === this.registry.get("character"));
+      selectCharacter(characters[(index + direction + characters.length) % characters.length].id);
+    };
+    const cycleLevel = (direction: number) => {
+      const index = levels.findIndex(l => l.id === this.registry.get("level"));
+      selectLevel(levels[(index + direction + levels.length) % levels.length].id);
+    };
+    const keys: Record<string, () => void> = {
+      LEFT: () => cycleCharacter(-1), RIGHT: () => cycleCharacter(1),
+      UP: () => cycleLevel(-1), DOWN: () => cycleLevel(1), SPACE: start, ENTER: start,
+    };
+    for (const [key, handler] of Object.entries(keys)) this.input.keyboard?.on("keydown-" + key, handler);
     this.events.once("shutdown", () => {
-      this.input.keyboard?.off("keydown-DOWN", nextLevel);
-      this.input.keyboard?.off("keydown-UP", previousLevel);
+      for (const [key, handler] of Object.entries(keys)) this.input.keyboard?.off("keydown-" + key, handler);
     });
-    const button = this.add.graphics();
-    button.fillStyle(0xe7ba79).fillRoundedRect(36, 785, 468, 70, 18);
-    text(270, 820, "COMEÇAR A SUBIR  →", 19, "#13232d", true).setOrigin(0.5);
-    const start = () => this.scene.start("Game");
-    this.add.zone(270, 820, 468, 70).setInteractive({ useHandCursor: true })
-      .on("pointerdown", start)
-      .on("pointerover", () => button.setAlpha(0.85))
-      .on("pointerout", () => button.setAlpha(1));
-    text(270, 886, "A / D ou ← → para mover  ·  Espaço para pular", 14, "#91a8b3").setOrigin(0.5);
-    text(270, 911, "No celular, use os controles na tela.", 13, "#718995").setOrigin(0.5);
-    this.input.keyboard?.once("keydown-SPACE", start);
-    this.input.keyboard?.once("keydown-ENTER", start);
+    if (!this.reducedMotion) {
+      this.cameras.main.fadeIn(500, 4, 27, 37);
+      cards.forEach((card, index) => {
+        card.root.setY(457).setAlpha(0);
+        this.tweens.add({ targets: card.root, y: 439, alpha: 1, duration: 500,
+          delay: 100 + index * 90, ease: "Cubic.Out" });
+      });
+    }
   }
   update(time: number) {
-    for (const portrait of this.portraits) portrait.setFrame(Math.floor(time / 90) % 64);
+    if (this.reducedMotion) return;
+    this.portraits.forEach((portrait, index) => portrait.setFrame((Math.floor(time / 90) + index * 13) % 64));
   }
 }
