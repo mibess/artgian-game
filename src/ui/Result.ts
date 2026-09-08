@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { getCharacter } from "../config/characters";
 import { TOTAL_FILAMENTS } from "../systems/LevelSystem";
 export function result(
   s: Phaser.Scene,
@@ -30,7 +31,7 @@ export function result(
     })
     .setOrigin(0.5);
   s.add
-    .image(270, 308, win ? "hat" : "mib-jump", win ? undefined : 63)
+    .image(270, 308, win ? "hat" : getCharacter(s.registry.get("character")).id + "-jump", win ? undefined : 63)
     .setDisplaySize(win ? 288 : 184, win ? 178 : 184);
   s.add
     .text(270, 460, win ? "IMPRESSÃO\nCONCLUÍDA!" : "IMPRESSÃO\nINTERROMPIDA", {

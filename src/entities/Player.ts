@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { SPEED, JUMP } from "../config/gameConfig";
+import { getCharacter, type Character } from "../config/characters";
 
 export type PlayerState =
   | "idle"
@@ -19,11 +20,14 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   wasGround = false;
   landingUntil = 0;
   private visualTexture = "mib-idle";
+  private character: Character;
   private visualFrame = 0;
   private forcedPose?: { texture: string; frame: number };
 
   constructor(s: Phaser.Scene, x: number, y: number) {
     super(s, x, y, "pose0");
+    this.character = getCharacter(s.registry.get("character"));
+    this.visualTexture = this.character.id + "-idle";
     s.add.existing(this);
     s.physics.add.existing(this);
     this.setDisplaySize(58, 81).setVisible(false);
@@ -31,7 +35,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       .image(x, y + 40.5, this.visualTexture, this.visualFrame)
       // The character is centered around x=102 and stands near y=238 inside
       // each 256px cell, so anchor the sheets on the physics body's feet.
-      .setOrigin(0.4, 0.93)
+      .setOrigin(this.character.originX, this.character.originY)
       .setDisplaySize(165.6, 165.6)
       .setDepth(10);
     const b = this.body as Phaser.Physics.Arcade.Body;
@@ -72,19 +76,23 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.forcedPose = undefined;
     if (this.state === "jump") {
       const progress = Phaser.Math.Clamp((JUMP + b.velocity.y) / JUMP, 0, 1);
-      this.visualTexture = "mib-jump";
-      this.visualFrame = 6 + Math.round(progress * 24);
+      this.visualTexture = this.character.id + "-jump";
+      this.visualFrame = this.character.id === "angel"
+        ? 12 + Math.round(progress * 23)
+        : 6 + Math.round(progress * 24);
     } else if (this.state === "fall") {
       const progress = Phaser.Math.Clamp(b.velocity.y / JUMP, 0, 1);
-      this.visualTexture = "mib-jump";
-      this.visualFrame = 30 + Math.round(progress * 23);
+      this.visualTexture = this.character.id + "-jump";
+      this.visualFrame = this.character.id === "angel"
+        ? 35 + Math.round(progress * 18)
+        : 30 + Math.round(progress * 23);
     } else if (this.state === "land") {
       const progress = Phaser.Math.Clamp(
         1 - (this.landingUntil - now) / 180,
         0,
         1,
       );
-      this.visualTexture = "mib-jump";
+      this.visualTexture = this.character.id + "-jump";
       this.visualFrame = 54 + Math.round(progress * 9);
     } else if (this.state === "run") {
       const frameDuration = Phaser.Math.Linear(
@@ -92,10 +100,10 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
         38,
         Math.abs(b.velocity.x) / SPEED,
       );
-      this.visualTexture = "mib-walk";
+      this.visualTexture = this.character.id + "-walk";
       this.visualFrame = Math.floor(now / frameDuration) % 64;
     } else {
-      this.visualTexture = "mib-idle";
+      this.visualTexture = this.character.id + "-idle";
       this.visualFrame = Math.floor(now / 90) % 64;
     }
 
@@ -121,14 +129,14 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.state = state;
     this.forcedPose =
       {
-        idle: { texture: "mib-idle", frame: 0 },
-        run: { texture: "mib-walk", frame: 18 },
-        jump: { texture: "mib-jump", frame: 20 },
-        fall: { texture: "mib-jump", frame: 42 },
-        land: { texture: "mib-jump", frame: 60 },
-        hurt: { texture: "mib-jump", frame: 23 },
-        celebrate: { texture: "mib-jump", frame: 45 },
-        dead: { texture: "mib-jump", frame: 63 },
+        idle: { texture: this.character.id + "-idle", frame: 0 },
+        run: { texture: this.character.id + "-walk", frame: 18 },
+        jump: { texture: this.character.id + "-jump", frame: 20 },
+        fall: { texture: this.character.id + "-jump", frame: 42 },
+        land: { texture: this.character.id + "-jump", frame: 60 },
+        hurt: { texture: this.character.id + "-jump", frame: 23 },
+        celebrate: { texture: this.character.id + "-jump", frame: 45 },
+        dead: { texture: this.character.id + "-jump", frame: 63 },
       }[state];
   }
 }

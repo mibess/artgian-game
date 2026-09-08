@@ -1,10 +1,12 @@
 import Phaser from "phaser";
 import { platforms, TOTAL_FILAMENTS } from "../systems/LevelSystem";
+import { characters, getCharacter } from "../config/characters";
 
 export class MenuScene extends Phaser.Scene {
-  private character!: Phaser.GameObjects.Image;
+  private portraits: Phaser.GameObjects.Image[] = [];
   constructor() { super("Menu"); }
   create() {
+    this.portraits = [];
     this.add.image(270, 480, "workshop-depth").setDisplaySize(640, 960);
     this.add.rectangle(270, 480, 540, 960, 0x08131d, 0.78);
     const text = (x: number, y: number, value: string, size: number, color = "#edf3f2", bold = false) =>
@@ -18,14 +20,40 @@ export class MenuScene extends Phaser.Scene {
     text(38, 87, "Camada\npor camada.", 49, "#f2f4ee", true).setLineSpacing(-3);
     text(40, 207, "Uma oficina. Muitas conquistas.", 17, "#9cb1bb");
     text(40, 261, "01  PERSONAGEM", 14, "#a9bdc6", true);
-    panel(36, 290, 468, 244);
-    this.character = this.add.image(154, 409, "mib-idle", 0).setDisplaySize(240, 240);
-    text(277, 333, "Mib", 34, "#f2f4ee", true);
-    text(278, 382, "O criador da oficina.", 16, "#a9bdc6");
-    text(278, 409, "Pronto para subir\na próxima camada.", 15, "#a9bdc6").setLineSpacing(5);
-    const characterBadge = text(278, 482, "✓ SELECIONADO", 13, "#e7ba79", true);
-    this.add.zone(270, 412, 468, 244).setInteractive({ useHandCursor: true })
-      .on("pointerdown", () => characterBadge.setText("✓ MIB SELECIONADO"));
+    const selected = getCharacter(this.registry.get("character"));
+    this.registry.set("character", selected.id);
+    const cards = characters.map((character, index) => {
+      const x = 36 + index * 242;
+      const background = this.add.graphics();
+      const portrait = this.add.image(x + 113, 468, character.id + "-idle", 0)
+        .setOrigin(character.originX, character.originY).setDisplaySize(168, 168);
+      this.portraits.push(portrait);
+      text(x + 113, 312, character.name, 23, "#f2f4ee", true).setOrigin(0.5);
+      const badge = text(x + 113, 507, "", 13, "#e7ba79", true).setOrigin(0.5);
+      const zone = this.add.zone(x + 113, 412, 226, 244).setInteractive({ useHandCursor: true });
+      return { character, x, background, badge, zone };
+    });
+    const select = (id: string) => {
+      this.registry.set("character", id);
+      for (const card of cards) {
+        const active = card.character.id === id;
+        card.background.clear().fillStyle(active ? 0x20343d : 0x142630, 0.94)
+          .fillRoundedRect(card.x, 290, 226, 244, 22)
+          .lineStyle(active ? 2 : 1, active ? 0xe7ba79 : 0x30444f)
+          .strokeRoundedRect(card.x, 290, 226, 244, 22);
+        card.badge.setText(active ? "✓ SELECIONADO" : "SELECIONAR");
+      }
+    };
+    for (const card of cards) card.zone.on("pointerdown", () => select(card.character.id));
+    select(selected.id);
+    const chooseMib = () => select("mib");
+    const chooseAngel = () => select("angel");
+    this.input.keyboard?.on("keydown-LEFT", chooseMib);
+    this.input.keyboard?.on("keydown-RIGHT", chooseAngel);
+    this.events.once("shutdown", () => {
+      this.input.keyboard?.off("keydown-LEFT", chooseMib);
+      this.input.keyboard?.off("keydown-RIGHT", chooseAngel);
+    });
     text(40, 563, "02  FASE", 14, "#a9bdc6", true);
     panel(36, 592, 468, 153);
     this.add.image(111, 668, "workshop-depth").setDisplaySize(112, 116);
@@ -49,6 +77,6 @@ export class MenuScene extends Phaser.Scene {
     this.input.keyboard?.once("keydown-ENTER", start);
   }
   update(time: number) {
-    this.character?.setFrame(Math.floor(time / 90) % 64);
+    for (const portrait of this.portraits) portrait.setFrame(Math.floor(time / 90) % 64);
   }
 }

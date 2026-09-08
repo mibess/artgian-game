@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { makeTextures } from "../art/textures";
+import { characters } from "../config/characters";
 export class BootScene extends Phaser.Scene {
   constructor() {
     super("Boot");
@@ -20,18 +21,13 @@ export class BootScene extends Phaser.Scene {
         color: "#9baebc",
       })
       .setOrigin(0.5);
-    this.load.spritesheet("mib-idle", "assets/mib/mib_idle_sheet.png", {
-      frameWidth: 256,
-      frameHeight: 256,
-    });
-    this.load.spritesheet("mib-walk", "assets/mib/mib_walk_sheet.png", {
-      frameWidth: 256,
-      frameHeight: 256,
-    });
-    this.load.spritesheet("mib-jump", "assets/mib/mib_jump_sheet.png", {
-      frameWidth: 256,
-      frameHeight: 256,
-    });
+    for (const character of characters) {
+      for (const action of ["idle", "walk", "jump"]) {
+        this.load.spritesheet(character.id + "-" + action,
+          "assets/" + character.id + "/" + character.id + "_" + action + "_sheet.png",
+          { frameWidth: 256, frameHeight: 256 });
+      }
+    }
     this.load.image("workshop-atlas", "assets/workshop-atlas.png");
     this.load.image("workshop-depth", "assets/workshop-clean.png");
     this.load.image("filament", "assets/filament-real.png");
