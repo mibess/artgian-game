@@ -33,12 +33,9 @@ export class BootScene extends Phaser.Scene {
       percent.setText(Math.round(value * 100) + "%");
     });
     // Load these first so the real artwork can animate while the sheets load.
-    this.load.once("filecomplete-image-jump-title", () => {
-      const texture = this.textures.get("jump-title");
-      texture.add("loading-logo", 0, 90, 145, 750, 315);
-      // Keep the full artwork as the default frame used by the menu.
-      texture.firstFrame = "__BASE";
-      this.add.image(270, 345, "jump-title", "loading-logo").setDisplaySize(330, 138.6);
+    this.load.once("filecomplete-image-jump-logo", () => {
+      const logo = this.add.image(270, 345, "jump-logo");
+      logo.setScale(Math.min(330 / logo.width, 150 / logo.height));
       title.setVisible(false);
     });
     this.load.once("filecomplete-image-filament", () => {
@@ -46,8 +43,9 @@ export class BootScene extends Phaser.Scene {
       if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches)
         this.tweens.add({ targets: spool, angle: 360, duration: 2400, repeat: -1, ease: "Linear" });
     });
-    this.load.image("jump-title", "assets/menu/artgian-jump.png");
+    this.load.image("jump-logo", "assets/menu/artgian-jump-logo.png");
     this.load.image("filament", "assets/filament-real.png");
+    this.load.image("jump-title", "assets/menu/artgian-jump.png");
     for (const character of characters) {
       for (const action of ["idle", "walk", "jump"]) {
         this.load.spritesheet(character.id + "-" + action,
@@ -67,6 +65,7 @@ export class BootScene extends Phaser.Scene {
   create() {
     makeTextures(this);
     loadLevelAssets(this);
-    this.scene.start("Menu");
+    // Keep the complete loading screen visible for a fixed extra second.
+    this.time.delayedCall(1000, () => this.scene.start("Menu"));
   }
 }

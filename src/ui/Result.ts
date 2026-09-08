@@ -1,11 +1,13 @@
 import Phaser from "phaser";
 import { getCharacter } from "../config/characters";
 import { getLevel } from "../config/levels";
+import { victory } from "./Victory";
 export function result(
   s: Phaser.Scene,
   win: boolean,
   data: { count: number; time: number; lives?: number },
 ) {
+  if (win) { victory(s, data); return; }
   const character = getCharacter(s.registry.get("character"));
   const level = getLevel(s.registry.get("level"));
   const productScale = Math.min(288 / level.productWidth, 178 / level.productHeight);
