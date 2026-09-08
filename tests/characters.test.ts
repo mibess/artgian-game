@@ -17,7 +17,8 @@ test("Giulinha preserves the updated sheet baseline and valid animation ranges",
   const giulinha = getCharacter("giulinha");
   assert.equal(giulinha.originY, 248 / 256);
   assert.equal(giulinha.animationScale.idle, 1);
-  assert.equal(giulinha.animationScale.walk, 1);
+  assert.ok(Math.abs(205 * giulinha.animationScale.walk - 213) < 1,
+    "Giulinha's walking reference matches the idle reference size");
   assert.ok(Math.abs(188 * giulinha.animationScale.jump - 213) < 1,
     "Giulinha's extended jump pose matches the idle reference size");
   for (const character of characters) {
