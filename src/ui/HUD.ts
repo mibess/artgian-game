@@ -33,8 +33,7 @@ export class HUD {
     s.add
       .text(466, 17, "FILAMENTO", {
         fontFamily: "Arial",
-        fontSize: "8px",
-        letterSpacing: 0.7,
+        fontSize: "11px",
         color: "#f2d3a1",
       })
       .setScrollFactor(0)
@@ -51,7 +50,7 @@ export class HUD {
     this.percent = s.add
       .text(475, 78, "0%", {
         fontFamily: "Arial",
-        fontSize: "11px",
+        fontSize: "14px",
         color: "#fff2d5",
         stroke: "#1a2027",
         strokeThickness: 3,
@@ -63,7 +62,7 @@ export class HUD {
     this.toast = s.add
       .text(270, 800, hint, {
         fontFamily: "Arial",
-        fontSize: "12px",
+        fontSize: "16px",
         color: "#f8eedb",
         backgroundColor: "#15212cbb",
         padding: { x: 12, y: 8 },

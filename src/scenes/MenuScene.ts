@@ -70,7 +70,7 @@ export class MenuScene extends Phaser.Scene {
     cards.forEach(card => card.zone.on("pointerdown", () => selectCharacter(card.character.id)));
     selectCharacter(selected.id, false);
     text(35, 538, "ESCOLHA SEU MUNDO", 15, "#a8d9d9", true).setOrigin(0, 0.5);
-    text(504, 538, "3 FASES", 12, "#6faaaa", true).setOrigin(1, 0.5);
+    text(504, 538, "3 FASES", 14, "#a8d9d9", true).setOrigin(1, 0.5);
     const stageCards = levels.map((level, index) => {
       const x = 108 + index * 162, root = this.add.container(x, 651);
       const border = this.add.graphics();
@@ -117,8 +117,6 @@ export class MenuScene extends Phaser.Scene {
       .fillStyle(0xffc568).fillRoundedRect(-234, -38, 468, 70, 22)
       .lineStyle(2, 0xffe0a2).strokeRoundedRect(-232, -36, 464, 66, 21);
     button.add([buttonArt, text(0, -3, "VAMOS SALTAR!  →", 25, "#183136", true)]);
-    if (!this.reducedMotion) this.tweens.add({ targets: button, scaleX: 1.012, scaleY: 1.025,
-      duration: 1250, yoyo: true, repeat: -1, ease: "Sine.InOut" });
     const start = () => {
       if (this.starting) return;
       this.starting = true;
@@ -133,8 +131,8 @@ export class MenuScene extends Phaser.Scene {
     this.add.zone(270, 859, 468, 78).setInteractive({ useHandCursor: true })
       .on("pointerdown", start).on("pointerover", () => buttonArt.setAlpha(0.9))
       .on("pointerout", () => buttonArt.setAlpha(1));
-    text(270, 919, "← → personagem   ·   ↑ ↓ fase   ·   Enter jogar", 13, "#88b5bf");
-    text(270, 942, "A / D para mover · Espaço para pular · Controles no celular", 12, "#6d98a5");
+    text(270, 919, "← → personagem   ·   ↑ ↓ fase   ·   Enter jogar", 14, "#b3d4db");
+    text(270, 942, "A / D: mover · Espaço: pular · Controles no celular", 14, "#a5c8d1");
     const cycleCharacter = (direction: number) => {
       const index = characters.findIndex(c => c.id === this.registry.get("character"));
       selectCharacter(characters[(index + direction + characters.length) % characters.length].id);

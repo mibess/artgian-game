@@ -24,7 +24,7 @@ export function victory(s: Phaser.Scene, data: { count: number; time: number; li
   const product = s.add.image(270, 367, level.product);
   product.setScale(Math.min(250 / product.width, 145 / product.height));
   text(270, 462, level.productName, 24, "#fff4dd", true);
-  text(270, 489, "MAIS UMA CRIAÇÃO GANHOU FORMA", 12, "#94bebf", true);
+  text(270, 489, "MAIS UMA CRIAÇÃO GANHOU FORMA", 14, "#b3d6d4", true);
   const seconds = Math.max(0, Math.floor(data.time / 1000));
   const time = String(Math.floor(seconds / 60)).padStart(2, "0") + ":" + String(seconds % 60).padStart(2, "0");
   const stats = [
@@ -34,7 +34,7 @@ export function victory(s: Phaser.Scene, data: { count: number; time: number; li
   ];
   for (const stat of stats) {
     panel(stat.x - 72, 535, 144, 104, 0x0e303a, 0x35606a);
-    text(stat.x, 561, stat.label, 12, "#9ac2c8", true);
+    text(stat.x, 561, stat.label, 14, "#b3d6dc", true);
     text(stat.x, 603, stat.value, 30, "#ffffff", true);
   }
   const all = data.count === level.collectibles.length;
@@ -57,7 +57,7 @@ export function victory(s: Phaser.Scene, data: { count: number; time: number; li
   };
   button(780, "JOGAR NOVAMENTE  ↻", true, "Game");
   button(862, "ESCOLHER OUTRA FASE  →", false, "Menu");
-  text(270, 924, "Enter ou Espaço para jogar novamente", 13, "#7ca6b1");
+  text(270, 924, "Enter ou Espaço para jogar novamente", 14, "#b3d4db");
   const replay = () => navigate("Game");
   s.input.keyboard?.on("keydown-SPACE", replay);
   s.input.keyboard?.on("keydown-ENTER", replay);
