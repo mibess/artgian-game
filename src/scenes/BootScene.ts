@@ -20,7 +20,18 @@ export class BootScene extends Phaser.Scene {
         color: "#9baebc",
       })
       .setOrigin(0.5);
-    this.load.image("sheet", "assets/character-sheet.png");
+    this.load.spritesheet("mib-idle", "assets/mib/mib_idle_sheet.png", {
+      frameWidth: 256,
+      frameHeight: 256,
+    });
+    this.load.spritesheet("mib-walk", "assets/mib/mib_walk_sheet.png", {
+      frameWidth: 256,
+      frameHeight: 256,
+    });
+    this.load.spritesheet("mib-jump", "assets/mib/mib_jump_sheet.png", {
+      frameWidth: 256,
+      frameHeight: 256,
+    });
     this.load.image("workshop-atlas", "assets/workshop-atlas.png");
     this.load.image("workshop-depth", "assets/workshop-depth.png");
   }

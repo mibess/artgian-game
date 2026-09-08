@@ -18,8 +18,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   bufferTime = -999;
   wasGround = false;
   landingUntil = 0;
-  private visualKey = "char-idle-0";
-  private forcedKey?: string;
+  private visualTexture = "mib-idle";
+  private visualFrame = 0;
+  private forcedPose?: { texture: string; frame: number };
 
   constructor(s: Phaser.Scene, x: number, y: number) {
     super(s, x, y, "pose0");
@@ -27,9 +28,11 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     s.physics.add.existing(this);
     this.setDisplaySize(58, 81).setVisible(false);
     this.visual = s.add
-      .image(x, y + 40.5, this.visualKey)
-      .setOrigin(0.5, 1)
-      .setDisplaySize(118, 164)
+      .image(x, y + 40.5, this.visualTexture, this.visualFrame)
+      // The character is centered around x=102 and stands near y=238 inside
+      // each 256px cell, so anchor the sheets on the physics body's feet.
+      .setOrigin(0.4, 0.93)
+      .setDisplaySize(184, 184)
       .setDepth(10);
     const b = this.body as Phaser.Physics.Arcade.Body;
     b.setSize(44, 112).setOffset(28, 28);
@@ -42,7 +45,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     const grounded = b.blocked.down || b.touching.down;
     if (grounded) {
       this.groundTime = now;
-      if (!this.wasGround) this.landingUntil = now + 100;
+      if (!this.wasGround) this.landingUntil = now + 180;
     }
     if (jump) this.bufferTime = now;
     this.setAccelerationX(axis * 2000);
@@ -66,28 +69,34 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
               ? "run"
               : "idle";
 
-    this.forcedKey = undefined;
-    if (this.state === "jump" || this.state === "fall") {
-      const frame =
-        b.velocity.y < -470
-          ? 2
-          : b.velocity.y < -170
-            ? 3
-            : b.velocity.y < 100
-              ? 4
-              : b.velocity.y < 420
-                ? 5
-                : 6;
-      this.visualKey = `char-jump-${frame}`;
+    this.forcedPose = undefined;
+    if (this.state === "jump") {
+      const progress = Phaser.Math.Clamp((JUMP + b.velocity.y) / JUMP, 0, 1);
+      this.visualTexture = "mib-jump";
+      this.visualFrame = 6 + Math.round(progress * 24);
+    } else if (this.state === "fall") {
+      const progress = Phaser.Math.Clamp(b.velocity.y / JUMP, 0, 1);
+      this.visualTexture = "mib-jump";
+      this.visualFrame = 30 + Math.round(progress * 23);
     } else if (this.state === "land") {
-      this.visualKey = "char-jump-8";
+      const progress = Phaser.Math.Clamp(
+        1 - (this.landingUntil - now) / 180,
+        0,
+        1,
+      );
+      this.visualTexture = "mib-jump";
+      this.visualFrame = 54 + Math.round(progress * 9);
     } else if (this.state === "run") {
-      const speed = Math.abs(b.velocity.x);
-      const row = speed < SPEED * 0.62 ? "walk" : "run";
-      const duration = row === "walk" ? 105 : 72;
-      this.visualKey = `char-${row}-${Math.floor(now / duration) % 10}`;
+      const frameDuration = Phaser.Math.Linear(
+        62,
+        38,
+        Math.abs(b.velocity.x) / SPEED,
+      );
+      this.visualTexture = "mib-walk";
+      this.visualFrame = Math.floor(now / frameDuration) % 64;
     } else {
-      this.visualKey = `char-idle-${Math.floor(now / 520) % 10}`;
+      this.visualTexture = "mib-idle";
+      this.visualFrame = Math.floor(now / 90) % 64;
     }
 
     this.wasGround = grounded;
@@ -96,26 +105,30 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   syncVisual() {
+    const pose = this.forcedPose ?? {
+      texture: this.visualTexture,
+      frame: this.visualFrame,
+    };
     this.visual
       .setPosition(this.x, this.y + 40.5)
-      .setTexture(this.forcedKey ?? this.visualKey)
-      .setDisplaySize(118, 164)
+      .setTexture(pose.texture, pose.frame)
+      .setDisplaySize(184, 184)
       .setFlipX(this.flipX)
       .setAlpha(this.alpha);
   }
 
   pose(state: PlayerState) {
     this.state = state;
-    this.forcedKey =
+    this.forcedPose =
       {
-        idle: "char-idle-0",
-        run: "char-run-2",
-        jump: "char-jump-3",
-        fall: "char-jump-5",
-        land: "char-jump-8",
-        hurt: "char-jump-7",
-        celebrate: "char-idle-6",
-        dead: "char-jump-0",
+        idle: { texture: "mib-idle", frame: 0 },
+        run: { texture: "mib-walk", frame: 18 },
+        jump: { texture: "mib-jump", frame: 20 },
+        fall: { texture: "mib-jump", frame: 42 },
+        land: { texture: "mib-jump", frame: 60 },
+        hurt: { texture: "mib-jump", frame: 23 },
+        celebrate: { texture: "mib-jump", frame: 45 },
+        dead: { texture: "mib-jump", frame: 63 },
       }[state];
   }
 }
