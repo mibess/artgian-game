@@ -140,7 +140,7 @@ export class GameScene extends Phaser.Scene {
       "A,D,LEFT,RIGHT,SPACE,ESC",
     ) as typeof this.keys;
     this.pauseLabel = this.add
-      .text(283, 916, "Ⅱ", { fontSize: "23px", color: "#c4dce7" })
+      .text(299, 901, "Ⅱ", { fontSize: "28px", color: "#ffffff", backgroundColor: "#173e52", padding: { x: 10, y: 9 } })
       .setScrollFactor(0)
       .setDepth(110)
       .setInteractive({ useHandCursor: true })
@@ -151,7 +151,7 @@ export class GameScene extends Phaser.Scene {
     }).setOrigin(0.5).setScrollFactor(0).setDepth(110).setInteractive({ useHandCursor: true })
       .on("pointerdown", () => this.scene.start("Menu"));
     const sound = this.add
-      .text(243, 916, "♫", { fontSize: "23px", color: "#c4dce7" })
+      .text(239, 901, "♫", { fontSize: "28px", color: "#ffffff", backgroundColor: "#173e52", padding: { x: 10, y: 9 } })
       .setScrollFactor(0)
       .setDepth(110)
       .setInteractive({ useHandCursor: true })
