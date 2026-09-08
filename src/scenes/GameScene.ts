@@ -145,9 +145,9 @@ export class GameScene extends Phaser.Scene {
       .setDepth(110)
       .setInteractive({ useHandCursor: true })
       .on("pointerdown", () => this.togglePause());
-    this.add.text(270, 862, "← SELEÇÃO", {
-      fontFamily: "Arial", fontSize: "13px", color: "#b9cbd3", backgroundColor: "#101e2bdd",
-      padding: { x: 10, y: 8 },
+    this.add.text(294, 876, "← SELEÇÃO", {
+      fontFamily: "Arial", fontSize: "14px", color: "#ffffff", backgroundColor: "#173e52",
+      fixedWidth: 132, fixedHeight: 36, align: "center", padding: { x: 0, y: 9 },
     }).setOrigin(0.5).setScrollFactor(0).setDepth(110).setInteractive({ useHandCursor: true })
       .on("pointerdown", () => this.scene.start("Menu"));
     const sound = this.add
