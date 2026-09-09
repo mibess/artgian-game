@@ -12,6 +12,7 @@ import { MobileControls } from "../ui/MobileControls";
 import { HUD } from "../ui/HUD";
 import { workshop } from "../art/Workshop";
 import type { VisualQA } from "../dev/VisualQA";
+import { hazardAnimationPose } from "../config/hazardAnimations";
 interface Hazard {
   obj: Phaser.GameObjects.Rectangle;
   kind: HazardKind;
@@ -22,7 +23,7 @@ interface Hazard {
   art: Phaser.GameObjects.Container;
   effect?: Phaser.GameObjects.Graphics;
   warning?: Phaser.GameObjects.Text;
-  kettle?: Phaser.GameObjects.Image;
+  animatedItem?: Phaser.GameObjects.Image;
 }
 export class GameScene extends Phaser.Scene {
   qa?: VisualQA;
@@ -222,15 +223,15 @@ export class GameScene extends Phaser.Scene {
     if (["steam", "pendant", "sound", "cymbal"].includes(kind)) {
       let effect: Phaser.GameObjects.Graphics | undefined;
       let warning: Phaser.GameObjects.Text | undefined;
-      let kettle: Phaser.GameObjects.Image | undefined;
+      let animatedItem: Phaser.GameObjects.Image | undefined;
       if (kind === "steam" || kind === "sound") {
         effect = this.add.graphics();
         art.add(effect);
         if (kind === "steam") {
           // Anchor the kettle body, not the full silhouette including steam.
-          kettle = this.add.image(0, h / 2 + 21, "home-kettle-idle", 0)
+          animatedItem = this.add.image(0, h / 2 + 21, this.textures.exists("home-kettle-idle") ? "home-kettle-idle" : "home-kettle", 0)
             .setOrigin(0.29, 0.70).setDisplaySize(140, 140);
-          art.add(kettle);
+          art.add(animatedItem);
         } else art.add(this.add.image(0, 0, "studio-speaker").setDisplaySize(58, 42));
         warning = this.add.text(0, -h / 2 - 18, "!", {
           fontFamily: "Arial", fontSize: "24px", fontStyle: "bold", color: "#ffcf78",
@@ -244,7 +245,7 @@ export class GameScene extends Phaser.Scene {
         art.add(this.add.image(0, 0, kind === "pendant" ? "home-lamp" : "studio-cymbal")
           .setDisplaySize(kind === "pendant" ? 52 : 65, kind === "pendant" ? 70 : 43));
       }
-      this.hazards.push({ obj, art, kind, x, y, active: false, phase, effect, warning, kettle });
+      this.hazards.push({ obj, art, kind, x, y, active: false, phase, effect, warning, animatedItem });
       return;
     }
     if (kind === "laser") {
@@ -436,7 +437,9 @@ export class GameScene extends Phaser.Scene {
         h.art.setAngle(Math.sin((this.elapsed + h.phase) / 250) * 16);
       }
       if (h.kind === "steam" || h.kind === "sound") {
-        h.kettle?.setFrame(Math.floor((this.elapsed + h.phase) / (1000 / 12)) % 64);
+        const pose = hazardAnimationPose(h.kind, this.elapsed, h.phase, key => this.textures.exists(key));
+        if (h.animatedItem && pose) h.animatedItem.setTexture(pose.sheet.key, pose.frame)
+          .setOrigin(pose.sheet.originX, pose.sheet.originY).setDisplaySize(pose.sheet.size, pose.sheet.size);
         h.effect!.clear();
         h.warning?.setVisible(pulse.warning).setAlpha(0.65 + Math.sin(this.elapsed / 70) * 0.35);
         if (h.active) {
