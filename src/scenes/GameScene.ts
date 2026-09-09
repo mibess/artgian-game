@@ -442,7 +442,10 @@ export class GameScene extends Phaser.Scene {
           .setOrigin(pose.sheet.originX, pose.sheet.originY).setDisplaySize(pose.sheet.size, pose.sheet.size);
         h.effect!.clear();
         h.warning?.setVisible(pulse.warning).setAlpha(0.65 + Math.sin(this.elapsed / 70) * 0.35);
-        if (h.active) {
+        // The warning sheet already contains the steam; keep legacy particles
+        // only as fallback. Collision rectangles remain unchanged.
+        const sheetHasSteam = h.kind === "steam" && h.animatedItem && pose?.state === "warn";
+        if (h.active && !sheetHasSteam) {
           if (h.kind === "steam") {
             h.effect!.fillStyle(0xeaf1dc, 0.42).fillRoundedRect(-h.obj.width / 2, -h.obj.height / 2, h.obj.width, h.obj.height, 20);
             for (let i = 0; i < 5; i++)

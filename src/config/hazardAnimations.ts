@@ -27,7 +27,7 @@ export function hazardAnimationPose(kind: HazardKind, elapsed: number, phase: nu
     const frame = warningTime < animation.warningMs
       ? Math.floor(warningTime / animation.warningMs * animation.burstFrame)
       : animation.burstFrame + Math.floor((warningTime - animation.warningMs) / animation.activeMs * (64 - animation.burstFrame));
-    return { sheet: animation.warn, frame: Math.min(63, frame) };
+    return { sheet: animation.warn, frame: Math.min(63, frame), state: "warn" as const };
   }
-  return { sheet: animation.idle, frame: Math.floor((elapsed + phase) / (1000 / 12)) % 64 };
+  return { sheet: animation.idle, frame: Math.floor((elapsed + phase) / (1000 / 12)) % 64, state: "idle" as const };
 }
