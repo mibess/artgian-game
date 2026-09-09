@@ -3,6 +3,13 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { characters, getCharacter } from "../src/config/characters.ts";
 
+test("Kettle idle sheet contains an 8 by 8 grid of 256px frames", () => {
+  const png = readFileSync(new URL("../public/assets/levels/home/chaleira_idle_sheet.png", import.meta.url));
+  assert.equal(png.subarray(1, 4).toString(), "PNG");
+  assert.equal(png.readUInt32BE(16), 2048);
+  assert.equal(png.readUInt32BE(20), 2048);
+});
+
 test("Every selectable character has three regular 64-frame PNG sheets", () => {
   assert.equal(characters.length, 3);
   for (const character of characters) for (const action of ["idle", "walk", "jump"]) {

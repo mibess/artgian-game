@@ -22,6 +22,7 @@ interface Hazard {
   art: Phaser.GameObjects.Container;
   effect?: Phaser.GameObjects.Graphics;
   warning?: Phaser.GameObjects.Text;
+  kettle?: Phaser.GameObjects.Image;
 }
 export class GameScene extends Phaser.Scene {
   qa?: VisualQA;
@@ -221,11 +222,16 @@ export class GameScene extends Phaser.Scene {
     if (["steam", "pendant", "sound", "cymbal"].includes(kind)) {
       let effect: Phaser.GameObjects.Graphics | undefined;
       let warning: Phaser.GameObjects.Text | undefined;
+      let kettle: Phaser.GameObjects.Image | undefined;
       if (kind === "steam" || kind === "sound") {
         effect = this.add.graphics();
         art.add(effect);
-        art.add(this.add.image(0, kind === "steam" ? h / 2 + 21 : 0, kind === "steam" ? "home-kettle" : "studio-speaker")
-          .setDisplaySize(kind === "steam" ? 62 : 58, kind === "steam" ? 58 : 42));
+        if (kind === "steam") {
+          // Anchor the kettle body, not the full silhouette including steam.
+          kettle = this.add.image(0, h / 2 + 21, "home-kettle-idle", 0)
+            .setOrigin(0.29, 0.70).setDisplaySize(140, 140);
+          art.add(kettle);
+        } else art.add(this.add.image(0, 0, "studio-speaker").setDisplaySize(58, 42));
         warning = this.add.text(0, -h / 2 - 18, "!", {
           fontFamily: "Arial", fontSize: "24px", fontStyle: "bold", color: "#ffcf78",
         }).setOrigin(0.5);
@@ -238,7 +244,7 @@ export class GameScene extends Phaser.Scene {
         art.add(this.add.image(0, 0, kind === "pendant" ? "home-lamp" : "studio-cymbal")
           .setDisplaySize(kind === "pendant" ? 52 : 65, kind === "pendant" ? 70 : 43));
       }
-      this.hazards.push({ obj, art, kind, x, y, active: false, phase, effect, warning });
+      this.hazards.push({ obj, art, kind, x, y, active: false, phase, effect, warning, kettle });
       return;
     }
     if (kind === "laser") {
@@ -430,6 +436,7 @@ export class GameScene extends Phaser.Scene {
         h.art.setAngle(Math.sin((this.elapsed + h.phase) / 250) * 16);
       }
       if (h.kind === "steam" || h.kind === "sound") {
+        h.kettle?.setFrame(Math.floor((this.elapsed + h.phase) / (1000 / 12)) % 64);
         h.effect!.clear();
         h.warning?.setVisible(pulse.warning).setAlpha(0.65 + Math.sin(this.elapsed / 70) * 0.35);
         if (h.active) {

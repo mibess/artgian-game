@@ -56,6 +56,8 @@ export class BootScene extends Phaser.Scene {
     }
     this.load.image("workshop-atlas", "assets/workshop-atlas.png");
     this.load.image("workshop-depth", "assets/workshop-clean.png");
+    this.load.spritesheet("home-kettle-idle", "assets/levels/home/chaleira_idle_sheet.png",
+      { frameWidth: 256, frameHeight: 256 });
     for (const theme of ["home", "studio"]) {
       this.load.image(theme + "-background", "assets/levels/" + theme + "/background.png");
       this.load.image(theme + "-atlas-source", "assets/levels/" + theme + "/assets.png");
