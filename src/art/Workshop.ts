@@ -2,17 +2,12 @@ import Phaser from "phaser";
 import { FLOOR, WORLD_H, H, W } from "../config/gameConfig";
 import { getLevel } from "../config/levels";
 import { getAtmosphere } from "../config/atmospheres";
+import { environment } from "./Environment";
 export function workshop(s: Phaser.Scene) {
   const level = getLevel(s.registry.get("level"));
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const atmosphere = getAtmosphere(level.id);
-  // Mirrored joins match perfectly without stretching the new vertical artwork.
-  const tileHeight = W * 2;
-  const factor = reducedMotion ? 0 : 0.22;
-  const tiles = Math.ceil((H + (WORLD_H - H) * factor) / tileHeight);
-  for (let i = 0; i < tiles; i++)
-    s.add.image(W / 2, i * tileHeight, level.background).setOrigin(0.5, 0)
-      .setDisplaySize(W, tileHeight).setFlipY(i % 2 === 1).setScrollFactor(factor).setDepth(-30);
+  environment(s, level.id, reducedMotion);
   s.add.rectangle(W / 2, H / 2, W, H, atmosphere.shade, atmosphere.shadeAlpha).setScrollFactor(0).setDepth(-29);
   // Near lights move faster than the wall, giving the ascent a sense of depth.
   for (let y = 80; y < WORLD_H * 0.45 + H; y += 420) {

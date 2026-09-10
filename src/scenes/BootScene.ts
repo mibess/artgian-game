@@ -4,6 +4,8 @@ import { characters } from "../config/characters";
 import { loadLevelAssets } from "../art/levelAssets";
 import { hazardAnimations } from "../config/hazardAnimations";
 import { atmospheres } from "../config/atmospheres";
+import { environments, type EnvironmentZone } from "../config/environment";
+import { environmentKey, prepareEnvironments } from "../art/Environment";
 export class BootScene extends Phaser.Scene {
   constructor() {
     super("Boot");
@@ -58,6 +60,9 @@ export class BootScene extends Phaser.Scene {
     }
     this.load.image("workshop-atlas", "assets/workshop-atlas.png");
     this.load.image("workshop-depth", atmospheres.workshop.backgroundPath);
+    for (const [id, environment] of Object.entries(environments))
+      for (const zone of ["ground", "middle", "upper"] as EnvironmentZone[])
+        this.load.image(environmentKey(id, zone), environment[zone]);
     for (const animation of Object.values(hazardAnimations))
       for (const sheet of [animation.idle, animation.warn])
         if (sheet) this.load.spritesheet(sheet.key, sheet.path, { frameWidth: 256, frameHeight: 256 });
@@ -70,6 +75,7 @@ export class BootScene extends Phaser.Scene {
   create() {
     makeTextures(this);
     loadLevelAssets(this);
+    prepareEnvironments(this);
     // Keep the complete loading screen visible for a fixed extra second.
     this.time.delayedCall(1000, () => this.scene.start("Menu"));
   }

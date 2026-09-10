@@ -25,14 +25,24 @@ perda de captura, blur e encerramento da cena limpam entradas.
 
 ## Escopo visual
 
-As três fases têm fundos verticais próprios, parallax em duas velocidades (0,22
-para a parede e 0,45 para as luzes), partículas ambiente e efeitos discretos de
-salto/aterrissagem. A Oficina conserva a aparência aprovada. Casa usa madeira,
-verde e luz quente com partículas lentas. Estúdio usa painéis acústicos em índigo,
-acentos violeta/ciano e luzes suaves em um ciclo de 3,6 segundos, como o ciclo das
-plataformas musicais. As artes da Casa e Estúdio estão em `background-parallax.png`
-nas respectivas pastas; as imagens antigas ficam preservadas. A preferência
-por movimento reduzido desativa esses movimentos decorativos.
+Cada fase agora tem três espaços distintos, montados na vertical sem espelhamento
+ou repetição. A Oficina parte das máquinas no piso, passa pelo armazenamento e
+chega às vigas e à ventilação; Casa vai da sala às janelas altas e ao sótão;
+Estúdio passa da sala de gravação aos painéis/equipamentos e à iluminação do teto.
+
+As faixas de 960 px se sobrepõem por 240 px, com alpha gradual na junção.
+O ambiente completo tem 2400 px; o deslocamento da câmera é mapeado para seus
+1440 px de subida. O piso coincide com a vista inicial e o teto com a vista final.
+A composição das faixas acontece uma vez no carregamento, em texturas de 640 × 960;
+as fontes são liberadas após a composição. As imagens originais ficam intactas.
+
+Há objetos recortados independentes nas margens, em planos de parallax 0,48 e 0,72,
+além das luzes a 0,45 e das partículas existentes. Ventiladores giram e objetos
+suspensos oscilam suavemente. Elementos decorativos ficam atrás da jogabilidade,
+sem colisão. Os planos seguem a posição real da câmera, inclusive nas quedas e
+no retorno aos checkpoints. Movimento reduzido desativa a oscilação e aproxima
+as velocidades das camadas, preservando a revelação de novos ambientes na subida.
+As miniaturas de seleção mantêm a arte aprovada anteriormente.
 HUD e controles são compartilhados. A impressora tem 20% da largura e altura
 anteriores (redução de 80% em ambas as dimensões), no canto superior direito,
 com porcentagem e barra de impressão. A física e os percursos não mudaram.

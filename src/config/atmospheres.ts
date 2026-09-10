@@ -1,4 +1,5 @@
 export interface Atmosphere {
+  /** Preserved artwork for selection/result screens; gameplay uses environment.ts. */
   backgroundPath: string;
   shade: number;
   shadeAlpha: number;
