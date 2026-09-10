@@ -46,7 +46,9 @@ um UUID, uma chave `conclusao-<UUID>` e os bytes originais do corpo
 `POST /api/game/rewards/:completionId` valida sessão anônima e propriedade e chama,
 exclusivamente no backend, `POST https://www.artgian.com.br/api/coupons/game`.
 Envia Bearer com o segredo, JSON e Idempotency-Key; não encaminha Origin,
-cookies nem headers do navegador. Redirecionamentos do upstream são rejeitados.
+cookies nem headers do navegador. Redirecionamentos do upstream são rejeitados: a chamada usa `redirect: "manual"`
+e trata respostas 3xx sem segui-las. O runtime Workers rejeita `redirect: "error"`
+antes de enviar a requisição.
 
 - Timeout de 8 segundos, erro de rede, resposta inválida ou 5xx: espera progressiva
   persistida, de 1 segundo até 5 minutos, reutilizando a chave e o corpo.

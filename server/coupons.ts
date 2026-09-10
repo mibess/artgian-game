@@ -50,12 +50,17 @@ export async function claimReward(env: Env, id: string, playerId: string,
     if (!env.COUPON_GAME_API_KEY || env.COUPON_GAME_API_KEY.length < 32) throw new Error("Coupon key unavailable");
     // Never forward request headers (especially Origin, cookies or player supplied auth).
     const response = await fetchStore(ENDPOINT, {
-      method: "POST", redirect: "error", signal: AbortSignal.timeout(8000),
+      // Workers supports follow/manual, not redirect:error. Never follow a
+      // redirect: it could forward the store credential to another destination.
+      method: "POST", redirect: "manual", signal: AbortSignal.timeout(8000),
       headers: { Authorization: `Bearer ${env.COUPON_GAME_API_KEY}`,
         "Content-Type": "application/json", "Idempotency-Key": c.idempotency_key },
       body: c.request_body,
     });
-    if (response.status === 200 || response.status === 201) {
+    if (response.status >= 300 && response.status < 400) {
+      status = "error";
+      console.error(JSON.stringify({ event: "coupon_redirect_rejected", status: response.status }));
+    } else if (response.status === 200 || response.status === 201) {
       const value = coupon(await response.json());
       const receivedAt = Date.now();
       // Persist a deadline once: a reload must never reset the 30-minute timer.

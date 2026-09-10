@@ -84,7 +84,7 @@ test("server replay creates one completion; reload returns saved reward, key and
     const h = new Headers(init!.headers);
     assert.equal(h.get("Authorization"), `Bearer ${f.env.COUPON_GAME_API_KEY}`);
     assert.equal(h.get("Content-Type"), "application/json"); assert.equal(h.has("Origin"), false);
-    assert.equal(init!.method, "POST"); assert.equal(init!.redirect, "error");
+    assert.equal(init!.method, "POST"); assert.equal(init!.redirect, "manual");
     sent = { key: h.get("Idempotency-Key")!, body: init!.body as string };
     return success();
   }) as typeof fetch);
@@ -195,6 +195,20 @@ test("permanent upstream errors do not retry or rotate the key", async t => {
     assert.equal((await f.request(`rewards/${id}`, {})).status, 422);
     assert.equal(calls, 1);
   }
+});
+
+test("Workers-compatible redirect mode never forwards the secret to a redirect target", async t => {
+  const f = await fixture(); t.after(() => f.sqlite.close());
+  const id = await f.complete(); let calls = 0;
+  f.setStore((async (url, init) => {
+    calls++;
+    assert.equal(url, "https://www.artgian.com.br/api/coupons/game");
+    assert.equal(init!.redirect, "manual", "Cloudflare rejects redirect:error before sending the request");
+    return new Response(null, { status: 307, headers: { Location: "https://other.example/collect" } });
+  }) as typeof fetch);
+  assert.equal((await f.request(`rewards/${id}`, {})).status, 422);
+  assert.equal((await f.request(`rewards/${id}`, {})).status, 422);
+  assert.equal(calls, 1);
 });
 
 test("altered replay, expired session and faster-than-real-time input are rejected", async t => {
