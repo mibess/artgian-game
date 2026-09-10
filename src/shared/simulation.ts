@@ -14,6 +14,7 @@ export interface Simulation {
   maxProgress: number; collected: number[]; activated: number[];
   status: "playing" | "won" | "lost";
 }
+const PLATFORM_FEET_OFFSET = 13.5;
 export function initialState(level: Level): Simulation {
   return { tick: 0, x: 105, feet: FLOOR - 16.5, vx: 0, vy: 0,
     groundAt: -999, jumpAt: -999, support: -1, lastLanding: 0, lives: 3, checkpoint: 0,
@@ -74,19 +75,33 @@ export function stepSimulation(s: Simulation, level: Level, input: Command): voi
     s.vy = -JUMP; s.support = -1; s.groundAt = s.jumpAt = -999;
   }
   const oldFeet = s.feet;
+  const oldX = s.x;
   s.x = clamp(s.x + s.vx * dt, 25, 515);
   s.feet += s.vy * dt + GRAVITY * dt * dt / 2;
   s.vy = Math.min(1100, s.vy + GRAVITY * dt);
   s.support = -1;
   if (s.vy >= 0) {
     let landing = -1, landingY = Infinity;
+    const feetDelta = s.feet - oldFeet;
+    const xDelta = s.x - oldX;
+    const feetHalf = 13;
+    const relEps = 1e-6;
     for (let i = 0; i < level.platforms.length; i++) {
       const p = level.platforms[i], now = platformAt(level, s, i);
       const prev = platformAt(level, s, i, previousTime);
-      const top = now.y - 13.5;
-      if (now.solid && s.x + 13 > now.x - p.w / 2 && s.x - 13 < now.x + p.w / 2 &&
-        oldFeet <= prev.y - 13.5 + 0.1 && s.feet >= top && top < landingY) {
-        landing = i; landingY = top;
+      if (!now.solid || feetDelta <= 0) continue;
+      const prevTop = prev.y - PLATFORM_FEET_OFFSET;
+      const nextTop = now.y - PLATFORM_FEET_OFFSET;
+      const relSpeed = feetDelta - (nextTop - prevTop);
+      if (Math.abs(relSpeed) < relEps) continue;
+      const impactT = (prevTop - oldFeet) / relSpeed;
+      if (impactT < 0 || impactT > 1) continue;
+      const platformX = prev.x + (now.x - prev.x) * impactT;
+      const impactX = oldX + xDelta * impactT;
+      const impactY = prevTop + (nextTop - prevTop) * impactT;
+      if (impactX + feetHalf > platformX - p.w / 2 && impactX - feetHalf < platformX + p.w / 2 &&
+        impactY < landingY) {
+        landing = i; landingY = impactY;
       }
     }
     if (landing >= 0) {
