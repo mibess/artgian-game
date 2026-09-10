@@ -72,7 +72,10 @@ export async function claimReward(env: Env, id: string, playerId: string,
     const reason = !env.COUPON_GAME_API_KEY || env.COUPON_GAME_API_KEY.length < 32 ? "missing_configuration" :
       error instanceof Error && error.message === "Invalid coupon response" ? "invalid_response" : "transport";
     console.error(JSON.stringify({ event: "coupon_retry", reason, attempt: c.attempts,
-      errorType: error instanceof Error ? error.name : "unknown" }));
+      errorType: error instanceof Error ? error.name : "unknown",
+      detail: error instanceof Error ? error.message
+        .replaceAll(env.COUPON_GAME_API_KEY ?? "__no_key__", "[redacted]")
+        .replaceAll(c.request_body, "[redacted]").slice(0, 200) : "unknown" }));
     // Ambiguous timeout/transport/invalid success: retain the original key AND body.
     // Do not log upstream response bodies, codes or credentials.
   }
