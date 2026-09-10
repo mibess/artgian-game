@@ -56,7 +56,7 @@ export class BootScene extends Phaser.Scene {
       }
     }
     this.load.image("workshop-atlas", "assets/workshop-atlas.png");
-    this.load.image("workshop-depth", "assets/workshop-clean.png");
+    this.load.image("workshop-depth", "assets/levels/workshop/background.png");
     for (const animation of Object.values(hazardAnimations))
       for (const sheet of [animation.idle, animation.warn])
         if (sheet) this.load.spritesheet(sheet.key, sheet.path, { frameWidth: 256, frameHeight: 256 });

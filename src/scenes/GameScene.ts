@@ -46,7 +46,6 @@ export class GameScene extends Phaser.Scene {
   paused = false;
   support?: Platform;
   highestCameraY = WORLD_H - H;
-  pauseLabel!: Phaser.GameObjects.Text;
   constructor() {
     super("Game");
   }
@@ -137,30 +136,15 @@ export class GameScene extends Phaser.Scene {
       });
     }
     this.hud = new HUD(this, this.level.collectibles.length, this.level.hint);
-    this.controls = new MobileControls(this);
+    this.controls = new MobileControls(this, {
+      pause: () => this.togglePause(),
+      menu: () => this.scene.start("Menu"),
+      sound: () => { this.audio.unlock(); return this.audio.toggle(); },
+      unlock: () => this.audio.unlock(),
+    });
     this.keys = this.input.keyboard!.addKeys(
       "A,D,LEFT,RIGHT,SPACE,ESC",
     ) as typeof this.keys;
-    this.pauseLabel = this.add
-      .text(299, 901, "Ⅱ", { fontSize: "28px", color: "#ffffff", backgroundColor: "#173e52", padding: { x: 10, y: 9 } })
-      .setScrollFactor(0)
-      .setDepth(110)
-      .setInteractive({ useHandCursor: true })
-      .on("pointerdown", () => this.togglePause());
-    this.add.text(294, 876, "← SELEÇÃO", {
-      fontFamily: "Arial", fontSize: "14px", color: "#ffffff", backgroundColor: "#173e52",
-      fixedWidth: 132, fixedHeight: 36, align: "center", padding: { x: 0, y: 9 },
-    }).setOrigin(0.5).setScrollFactor(0).setDepth(110).setInteractive({ useHandCursor: true })
-      .on("pointerdown", () => this.scene.start("Menu"));
-    const sound = this.add
-      .text(239, 901, "♫", { fontSize: "28px", color: "#ffffff", backgroundColor: "#173e52", padding: { x: 10, y: 9 } })
-      .setScrollFactor(0)
-      .setDepth(110)
-      .setInteractive({ useHandCursor: true })
-      .on("pointerdown", () => {
-        this.audio.unlock();
-        sound.setAlpha(this.audio.toggle() ? 0.35 : 1);
-      });
     this.input.on("pointerdown", () => this.audio.unlock());
     this.input.keyboard!.on("keydown", () => this.audio.unlock());
     this.game.events.on("blur", this.onBlur, this);
@@ -177,7 +161,7 @@ export class GameScene extends Phaser.Scene {
     if (this.locked) return;
     this.paused = !this.paused;
     this.time.paused = this.paused;
-    this.pauseLabel.setText(this.paused ? "▶" : "Ⅱ");
+    this.controls.setPaused(this.paused);
     this.controls.clear();
     if (this.paused) {
       this.physics.pause();
@@ -191,6 +175,9 @@ export class GameScene extends Phaser.Scene {
   }
   land(p: Platform) {
     if (this.locked) return;
+    if (this.support !== p && this.level.id === "workshop" &&
+      !window.matchMedia("(prefers-reduced-motion: reduce)").matches)
+      this.burst(this.player.x, p.y - 12, 0xb2ebdc, 4);
     this.support = p;
     this.qa?.landed(this.ledges.indexOf(p));
     p.touch();
@@ -400,6 +387,8 @@ export class GameScene extends Phaser.Scene {
         )
       ) {
         this.audio.play("jump");
+        if (this.level.id === "workshop" && !window.matchMedia("(prefers-reduced-motion: reduce)").matches)
+          this.burst(this.player.x, this.player.y + 35, 0xe8c992, 5);
         this.support = undefined;
       }
       this.maxProgress = Math.max(

@@ -81,18 +81,18 @@ export function result(
         color: "#ffd274",
       })
       .setOrigin(0.5);
-  const b = s.add
-    .rectangle(270, 788, 350, 65, 0xe4b56f)
-    .setInteractive({ useHandCursor: true });
-  s.add
-    .text(270, 788, win ? "JOGAR NOVAMENTE  →" : "TENTAR NOVAMENTE  ↻", {
-      fontFamily: "Arial",
-      fontSize: "17px",
-      fontStyle: "bold",
-      color: "#19242b",
-    })
-    .setOrigin(0.5);
-  b.on("pointerdown", () => s.scene.start("Game"));
+  const button = s.add.container(270, 788);
+  const buttonArt = s.add.graphics().fillStyle(0x965d2c).fillRoundedRect(-215, -29, 430, 70, 22)
+    .fillStyle(0xffce83).fillRoundedRect(-215, -35, 430, 70, 22)
+    .lineStyle(2, 0xffe9ba).strokeRoundedRect(-213, -33, 426, 66, 21);
+  const caption = s.add.text(0, 0, "TENTAR NOVAMENTE  ↻", {
+    fontFamily: "Arial", fontSize: "21px", fontStyle: "bold", color: "#18343a",
+  }).setOrigin(0.5);
+  button.add([buttonArt, caption]);
+  s.add.zone(270, 788, 430, 76).setInteractive({ useHandCursor: true })
+    .on("pointerdown", () => s.scene.start("Game"))
+    .on("pointerover", () => buttonArt.setAlpha(0.86))
+    .on("pointerout", () => buttonArt.setAlpha(1));
   s.add.text(270, 900, "← Voltar à seleção", { fontFamily: "Arial", fontSize: "17px", color: "#e9ce9d" })
     .setOrigin(0.5).setInteractive({ useHandCursor: true })
     .on("pointerdown", () => s.scene.start("Menu"));
