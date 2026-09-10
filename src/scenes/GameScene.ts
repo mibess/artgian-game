@@ -11,6 +11,7 @@ import { AudioSystem } from "../systems/AudioSystem";
 import { MobileControls } from "../ui/MobileControls";
 import { HUD } from "../ui/HUD";
 import { workshop } from "../art/Workshop";
+import { getAtmosphere } from "../config/atmospheres";
 import type { VisualQA } from "../dev/VisualQA";
 import { hazardAnimationPose } from "../config/hazardAnimations";
 interface Hazard {
@@ -175,9 +176,9 @@ export class GameScene extends Phaser.Scene {
   }
   land(p: Platform) {
     if (this.locked) return;
-    if (this.support !== p && this.level.id === "workshop" &&
+    if (this.support !== p &&
       !window.matchMedia("(prefers-reduced-motion: reduce)").matches)
-      this.burst(this.player.x, p.y - 12, 0xb2ebdc, 4);
+      this.burst(this.player.x, p.y - 12, getAtmosphere(this.level.id).land, 4);
     this.support = p;
     this.qa?.landed(this.ledges.indexOf(p));
     p.touch();
@@ -387,8 +388,8 @@ export class GameScene extends Phaser.Scene {
         )
       ) {
         this.audio.play("jump");
-        if (this.level.id === "workshop" && !window.matchMedia("(prefers-reduced-motion: reduce)").matches)
-          this.burst(this.player.x, this.player.y + 35, 0xe8c992, 5);
+        if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches)
+          this.burst(this.player.x, this.player.y + 35, getAtmosphere(this.level.id).jump, 5);
         this.support = undefined;
       }
       this.maxProgress = Math.max(

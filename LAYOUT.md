@@ -1,4 +1,4 @@
-# Refinamento da Oficina
+# Refinamento das três fases
 
 ## Tailwind CSS
 
@@ -25,8 +25,13 @@ perda de captura, blur e encerramento da cena limpam entradas.
 
 ## Escopo visual
 
-Oficina recebe um novo fundo, parallax em duas velocidades, luzes pulsantes,
-partículas ambiente e efeitos discretos de salto/aterrissagem. A preferência
+As três fases têm fundos verticais próprios, parallax em duas velocidades (0,22
+para a parede e 0,45 para as luzes), partículas ambiente e efeitos discretos de
+salto/aterrissagem. A Oficina conserva a aparência aprovada. Casa usa madeira,
+verde e luz quente com partículas lentas. Estúdio usa painéis acústicos em índigo,
+acentos violeta/ciano e luzes suaves em um ciclo de 3,6 segundos, como o ciclo das
+plataformas musicais. As artes da Casa e Estúdio estão em `background-parallax.png`
+nas respectivas pastas; as imagens antigas ficam preservadas. A preferência
 por movimento reduzido desativa esses movimentos decorativos.
 HUD e controles são compartilhados. A impressora tem 20% da largura e altura
 anteriores (redução de 80% em ambas as dimensões), no canto superior direito,

@@ -3,6 +3,7 @@ import { makeTextures } from "../art/textures";
 import { characters } from "../config/characters";
 import { loadLevelAssets } from "../art/levelAssets";
 import { hazardAnimations } from "../config/hazardAnimations";
+import { atmospheres } from "../config/atmospheres";
 export class BootScene extends Phaser.Scene {
   constructor() {
     super("Boot");
@@ -56,12 +57,12 @@ export class BootScene extends Phaser.Scene {
       }
     }
     this.load.image("workshop-atlas", "assets/workshop-atlas.png");
-    this.load.image("workshop-depth", "assets/levels/workshop/background.png");
+    this.load.image("workshop-depth", atmospheres.workshop.backgroundPath);
     for (const animation of Object.values(hazardAnimations))
       for (const sheet of [animation.idle, animation.warn])
         if (sheet) this.load.spritesheet(sheet.key, sheet.path, { frameWidth: 256, frameHeight: 256 });
     for (const theme of ["home", "studio"]) {
-      this.load.image(theme + "-background", "assets/levels/" + theme + "/background.png");
+      this.load.image(theme + "-background", atmospheres[theme].backgroundPath);
       this.load.image(theme + "-atlas-source", "assets/levels/" + theme + "/assets.png");
       this.load.image(theme + "-product-source", "assets/levels/" + theme + "/product.png");
     }
