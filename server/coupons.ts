@@ -36,7 +36,7 @@ export async function claimReward(env: Env, id: string, playerId: string,
   if (c.status === "gone") return gone();
   if (c.status === "error") return json({ status: "error", error: "Não foi possível liberar a recompensa. Tente falar com a Artgian." }, 422);
   if (c.next_attempt_at > now || c.lease_until > now)
-    return pending(Math.max(c.next_attempt_at, c.lease_until) - now);
+    return pending(Math.max(c.next_attempt_at, c.lease_until) - now, c.attempts > 0);
   // Claim in D1 before any network I/O. Survives parallel requests and process restarts.
   const lease = crypto.randomUUID();
   const claimed = await env.DB.prepare(`UPDATE completions SET lease_token = ?, lease_until = ?, attempts = attempts + 1
@@ -63,24 +63,30 @@ export async function claimReward(env: Env, id: string, playerId: string,
       reward = JSON.stringify({ ...value, deadline });
       status = deadline > receivedAt ? "ready" : "gone";
     } else if (response.status === 410) status = "gone";
-    else if (response.status === 429 || response.status >= 500)
+    else if (response.status === 429 || response.status >= 500) {
       delay = retryDelay(response.headers.get("Retry-After"), c.attempts, Date.now());
+      console.error(JSON.stringify({ event: "coupon_retry", reason: "upstream_status", status: response.status, attempt: c.attempts }));
+    }
     else status = "error";
-  } catch {
+  } catch (error) {
+    const reason = !env.COUPON_GAME_API_KEY || env.COUPON_GAME_API_KEY.length < 32 ? "missing_configuration" :
+      error instanceof Error && error.message === "Invalid coupon response" ? "invalid_response" : "transport";
+    console.error(JSON.stringify({ event: "coupon_retry", reason, attempt: c.attempts,
+      errorType: error instanceof Error ? error.name : "unknown" }));
     // Ambiguous timeout/transport/invalid success: retain the original key AND body.
     // Do not log upstream response bodies, codes or credentials.
   }
   await env.DB.prepare(`UPDATE completions SET status = ?, reward = ?, next_attempt_at = ?,
     lease_until = 0, lease_token = NULL WHERE id = ? AND lease_token = ?`)
     .bind(status, reward, Date.now() + delay, id, lease).run();
-  if (status === "pending") return pending(delay);
+  if (status === "pending") return pending(delay, true);
   return claimReward(env, id, playerId, fetchStore);
 }
 export const json = (body: unknown, status = 200, headers: Record<string, string> = {}) =>
   new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json",
     "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff", ...headers } });
 const gone = () => json({ status: "gone", error: "Esta recompensa não está mais disponível." }, 410);
-const pending = (delay: number) => {
+const pending = (delay: number, retrying = false) => {
   const seconds = Math.max(1, Math.ceil(delay / 1000));
-  return json({ status: "pending", retryAfterSeconds: seconds }, 202, { "Retry-After": String(seconds) });
+  return json({ status: "pending", retrying, retryAfterSeconds: seconds }, 202, { "Retry-After": String(seconds) });
 };

@@ -58,8 +58,13 @@ export function couponReward(completion: Promise<string>, parent = document.quer
       if (response.status === 202 || response.status === 429 || response.status >= 500) {
         const wait = Math.max(1, Number(response.headers.get("Retry-After")) || 0,
           Number(data.retryAfterSeconds) || 0, Math.min(60, 2 ** attempt));
-        status.textContent = "Sua recompensa está sendo preparada. Aguarde…";
-        timeout = setTimeout(() => void poll(id, attempt + 1), wait * 1000); return;
+        const retryAt = Date.now() + wait * 1000;
+        const showRetry = () => {
+          const seconds = Math.max(0, Math.ceil((retryAt - Date.now()) / 1000));
+          status.textContent = `A loja ainda não liberou seu cupom. Nova tentativa em ${seconds}s. Sua conclusão está salva.`;
+        };
+        clearInterval(interval); showRetry(); interval = setInterval(showRetry, 1000);
+        timeout = setTimeout(() => { clearInterval(interval); void poll(id, attempt + 1); }, wait * 1000); return;
       }
       unavailable(data.error ?? "Não foi possível consultar a recompensa.");
     } catch {
