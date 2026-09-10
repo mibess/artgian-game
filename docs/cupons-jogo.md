@@ -64,8 +64,9 @@ antes de enviar a requisição.
   operação idempotente. Cada atualização verifica o token da concessão.
 
 O navegador consulta enquanto a tela de recompensa está aberta. Ao fechá-la,
-as consultas param; o estado continua no banco. Abrir “Ver meu cupom” ou
-recarregar retoma a consulta. Não há job que emita recompensas em segundo plano
+as consultas param; o estado continua no banco. Abrir “Ver meu cupom” na conquista ou “Ver meu último cupom” no menu
+retoma a consulta. Recarregar sempre abre a seleção de personagem e fase, sem
+redirecionamento automático para a recompensa. Não há job que emita recompensas em segundo plano
 quando ninguém estiver consultando.
 
 A tela mostra percentual, código, Copiar cupom, contador e Visitar loja. O link

@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { restoreCompletion } from "../systems/GameSession";
 import { getLevel, levels } from "../config/levels";
 import { characters, getCharacter } from "../config/characters";
 
@@ -132,7 +133,27 @@ export class MenuScene extends Phaser.Scene {
       .on("pointerdown", start).on("pointerover", () => buttonArt.setAlpha(0.9))
       .on("pointerout", () => buttonArt.setAlpha(1));
     text(270, 919, "← → personagem   ·   ↑ ↓ fase   ·   Enter jogar", 14, "#b3d4db");
-    text(270, 942, "Conclua uma fase para ganhar um cupom Artgian", 14, "#a5c8d1");
+    const savedReward = text(270, 942, "VER MEU ÚLTIMO CUPOM", 14, "#ffda90", true)
+      .setInteractive({ useHandCursor: true });
+    let active = true;
+    this.events.once("shutdown", () => { active = false; });
+    savedReward.on("pointerdown", async () => {
+      if (this.starting) return;
+      this.starting = true;
+      savedReward.setText("CONSULTANDO CUPOM…");
+      try {
+        const completion = await restoreCompletion();
+        if (!active) return;
+        if (completion?.completionId) {
+          this.registry.set("level", completion.levelId);
+          this.registry.remove("rewardSession");
+          this.registry.set("rewardCompletionId", completion.completionId);
+          this.scene.start("LevelComplete", completion);
+        } else savedReward.setText("CONCLUA UMA FASE PARA GANHAR SEU CUPOM");
+      } catch {
+        if (active) savedReward.setText("SEM CONEXÃO • TOQUE PARA TENTAR NOVAMENTE");
+      } finally { if (active) this.starting = false; }
+    });
     const cycleCharacter = (direction: number) => {
       const index = characters.findIndex(c => c.id === this.registry.get("character"));
       selectCharacter(characters[(index + direction + characters.length) % characters.length].id);

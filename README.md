@@ -43,6 +43,6 @@ TypeScript, build de produção e testes automatizados de física, percursos com
 
 Em desenvolvimento, abra `/?qa=1`: P alterna um percurso automático de teste que envia apenas movimento e salto, com pausas no checkpoint central e na penúltima plataforma. K captura o framebuffer do jogo. Esse módulo é removido do build de produção. Ele não altera vidas, não teletransporta o jogador e não desativa obstáculos.
 
-O áudio continua sintetizado. A próxima impressão reinicia esta fase. Partidas anônimas têm validação por reprodução de comandos no servidor e recompensa persistida por conclusão. O cupom salvo reaparece ao recarregar. A partida em andamento não é retomada após recarga. Aparelhos físicos ainda podem exigir ajuste fino de desempenho e controles.
+O áudio continua sintetizado. A próxima impressão reinicia esta fase. Partidas anônimas têm validação por reprodução de comandos no servidor e recompensa persistida por conclusão. Ao recarregar, o jogo abre a seleção inicial; o cupom salvo pode ser consultado pelo botão “Ver meu último cupom”. A partida em andamento não é retomada após recarga. Aparelhos físicos ainda podem exigir ajuste fino de desempenho e controles.
 
 Consulte [a integração de cupons](docs/cupons-jogo.md) para sessões anônimas, persistência, repetição de chamadas e configuração de produção. O jogo precisa ser publicado como Worker com D1, e `COUPON_GAME_API_KEY` deve existir somente no ambiente secreto dos servidores do jogo e da loja.
