@@ -47,8 +47,9 @@ export class VisualQA {
     if (index === this.stopAt) this.running = false;
   }
   input() {
-    const s = this.scene,
-      b = s.player.body as Phaser.Physics.Arcade.Body;
+    const s = this.scene, sim = s.simulation;
+    const b = { bottom: sim.feet, height: 65, velocity: { x: sim.vx, y: sim.vy },
+      blocked: { down: sim.support >= 0 }, touching: { down: sim.support >= 0 } };
     this.output.textContent = JSON.stringify({
       running: this.running,
       target: this.target,

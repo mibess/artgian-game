@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { restoreCompletion } from "../systems/GameSession";
 import { makeTextures } from "../art/textures";
 import { characters } from "../config/characters";
 import { loadLevelAssets } from "../art/levelAssets";
@@ -77,6 +78,16 @@ export class BootScene extends Phaser.Scene {
     loadLevelAssets(this);
     prepareEnvironments(this);
     // Keep the complete loading screen visible for a fixed extra second.
-    this.time.delayedCall(1000, () => this.scene.start("Menu"));
+    void restoreCompletion().then(completion => {
+      this.registry.set("authenticated", true); return completion;
+    }).catch(() => { this.registry.set("authenticated", false); return null; }).then(completion => {
+      this.time.delayedCall(1000, () => {
+        if (completion?.completionId) {
+          this.registry.set("level", completion.levelId);
+          this.registry.set("rewardCompletionId", completion.completionId);
+          this.scene.start("LevelComplete", completion);
+        } else this.scene.start("Menu");
+      });
+    });
   }
 }

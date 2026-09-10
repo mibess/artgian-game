@@ -1,10 +1,9 @@
 import Phaser from "phaser";
-import { W, H, WORLD_H, FLOOR, TOP } from "../config/gameConfig";
+import { W, H, WORLD_H, FLOOR } from "../config/gameConfig";
 import { Player } from "../entities/Player";
 import { Platform } from "../entities/Platform";
 import { Collectible } from "../entities/Collectible";
-import { progressAt } from "../systems/LevelSystem";
-import { getLevel, hazardState, type HazardKind } from "../config/levels";
+import { getLevel, hazardState, beatState, type HazardKind } from "../config/levels";
 import { CheckpointSystem } from "../systems/CheckpointSystem";
 import { PrintingProgressSystem } from "../systems/PrintingProgressSystem";
 import { AudioSystem } from "../systems/AudioSystem";
@@ -13,6 +12,8 @@ import { HUD } from "../ui/HUD";
 import { workshop } from "../art/Workshop";
 import { getAtmosphere } from "../config/atmospheres";
 import type { VisualQA } from "../dev/VisualQA";
+import { GameSession } from "../systems/GameSession";
+import { initialState, stepSimulation, platformAt, STEP_MS, type Simulation } from "../shared/simulation";
 import { hazardAnimationPose } from "../config/hazardAnimations";
 interface Hazard {
   obj: Phaser.GameObjects.Rectangle;
@@ -27,6 +28,12 @@ interface Hazard {
   animatedItem?: Phaser.GameObjects.Image;
 }
 export class GameScene extends Phaser.Scene {
+  simulation!: Simulation;
+  gameSession?: GameSession;
+  simulationReady = false;
+  accumulator = 0;
+  pendingJump = false;
+  collectibleObjects: Collectible[] = [];
   qa?: VisualQA;
   player!: Player;
   level = getLevel(undefined);
@@ -54,6 +61,14 @@ export class GameScene extends Phaser.Scene {
     this.time.paused = false;
     this.physics.resume();
     this.level = getLevel(this.registry.get("level"));
+    this.simulation = initialState(this.level);
+    this.simulationReady = false;
+    this.accumulator = 0;
+    this.pendingJump = false;
+    this.collectibleObjects = [];
+    this.gameSession = undefined;
+    this.registry.remove("rewardSession");
+    this.registry.remove("rewardCompletionId");
     this.qa = undefined;
     this.ledges = [];
     this.hazards = [];
@@ -106,28 +121,13 @@ export class GameScene extends Phaser.Scene {
     this.player = new Player(this, 105, FLOOR - 57);
     this.cameras.main.setBounds(0, 0, W, WORLD_H);
     this.cameras.main.scrollY = WORLD_H - H;
-    this.physics.add.collider(
-      this.player,
-      this.ledges,
-      (_p, l) => this.land(l as Platform),
-      (_p, l) => {
-        const p = l as Platform;
-        const b = this.player.body as Phaser.Physics.Arcade.Body;
-        return b.velocity.y >= 0 && b.bottom <= p.y + 24;
-      },
-      this,
-    );
+    // Rendering uses Phaser; all gameplay is predicted by the same fixed-step
+    // simulation the server replays. Arcade must not apply a second physics step.
+    (this.player.body as Phaser.Physics.Arcade.Body).enable = false;
     for (const index of this.level.collectibles) {
       const p = this.level.platforms[index];
       const c = new Collectible(this, p.x, p.y - 63);
-      this.physics.add.overlap(this.player, c, () => {
-        if (this.locked || !c.active) return;
-        c.disableBody(true, true);
-        this.collected++;
-        this.audio.play("collect");
-        this.burst(c.x, c.y, 0xffcc69, 12);
-        if (this.collected === this.level.collectibles.length) this.hud.message("FILAMENTO COMPLETO! ✦");
-      });
+      this.collectibleObjects.push(c);
     }
     for (const hazard of this.level.hazards)
       this.makeHazard(hazard.kind, hazard.x, hazard.y, hazard.w, hazard.h, hazard.phase);
@@ -143,6 +143,21 @@ export class GameScene extends Phaser.Scene {
       sound: () => { this.audio.unlock(); return this.audio.toggle(); },
       unlock: () => this.audio.unlock(),
     });
+    const connection = new GameSession();
+    const startToken = {};
+    this.registry.set("activeRunStart", startToken);
+    this.hud.message("PREPARANDO PARTIDA…");
+    void connection.start(this.level.id).then(() => {
+      if (!this.scene.isActive() || this.registry.get("activeRunStart") !== startToken) return;
+      this.gameSession = connection;
+      this.registry.set("rewardSession", connection);
+      this.hud.message("PARTIDA VALENDO CUPOM");
+    }).catch(() => {
+      if (this.scene.isActive() && this.registry.get("activeRunStart") === startToken)
+        this.hud.message("MODO TREINO • ENTRE PARA JOGAR VALENDO CUPOM");
+    }).finally(() => {
+      if (this.scene.isActive() && this.registry.get("activeRunStart") === startToken) this.simulationReady = true;
+    });
     this.keys = this.input.keyboard!.addKeys(
       "A,D,LEFT,RIGHT,SPACE,ESC",
     ) as typeof this.keys;
@@ -150,6 +165,7 @@ export class GameScene extends Phaser.Scene {
     this.input.keyboard!.on("keydown", () => this.audio.unlock());
     this.game.events.on("blur", this.onBlur, this);
     this.events.once("shutdown", () => {
+      if (this.registry.get("activeRunStart") === startToken) this.registry.remove("activeRunStart");
       this.audio.destroy();
       this.printer.destroy();
       this.game.events.off("blur", this.onBlur, this);
@@ -181,22 +197,12 @@ export class GameScene extends Phaser.Scene {
       this.burst(this.player.x, p.y - 12, getAtmosphere(this.level.id).land, 4);
     this.support = p;
     this.qa?.landed(this.ledges.indexOf(p));
-    p.touch();
-    if (
-      p.spec.checkpoint !== undefined &&
-      this.checkpoint.activate(p.spec.checkpoint, p.x, p.y)
-    ) {
-      this.hud.message("CHECKPOINT SALVO • CAMADA " + p.spec.checkpoint);
+    if (this.checkpoint.activate(this.simulation.checkpoint, this.simulation.checkpointX,
+      this.simulation.checkpointFeet + 16.5)) {
+      this.hud.message("CHECKPOINT SALVO • CAMADA " + this.simulation.checkpoint);
       this.audio.play("platform");
       this.burst(p.x, p.y - 20, 0x81f1ce, 20);
     }
-    if (p.spec.kind === "boost") {
-      this.player.setVelocityY(-930);
-      this.player.groundTime = -999;
-      this.audio.play("jump");
-      this.burst(p.x, p.y - 20, 0x72fff0, 12);
-    }
-    if (p.spec.y === TOP) this.complete();
   }
   makeHazard(
     kind: Hazard["kind"],
@@ -279,57 +285,6 @@ export class GameScene extends Phaser.Scene {
       });
     }
   }
-  damage() {
-    if (this.locked || this.elapsed < this.invulnerable) return;
-    if (this.qa)
-      console.info(
-        "QA_DAMAGE",
-        JSON.stringify({
-          x: this.player.x,
-          y: this.player.y,
-          target: this.qa.target,
-          elapsed: this.elapsed,
-          checkpoint: this.checkpoint.index,
-        }),
-      );
-    this.lives--;
-    this.hud.damage(this.lives);
-    this.audio.play("hurt");
-    this.cameras.main.shake(180, 0.009);
-    this.player.pose(this.lives ? "hurt" : "dead");
-    this.locked = true;
-    this.player.setAccelerationX(0);
-    this.player.setVelocity(0, 0);
-    (this.player.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
-    if (!this.lives) {
-      this.time.delayedCall(650, () =>
-        this.scene.start("GameOver", {
-          count: this.collected,
-          time: this.elapsed,
-        }),
-      );
-      return;
-    }
-    this.time.delayedCall(450, () => {
-      this.player.setPosition(this.checkpoint.x, this.checkpoint.y);
-      (this.player.body as Phaser.Physics.Arcade.Body).reset(
-        this.checkpoint.x,
-        this.checkpoint.y,
-      );
-      (this.player.body as Phaser.Physics.Arcade.Body).setAllowGravity(true);
-      this.player.groundTime = this.player.bufferTime = -999;
-      this.support = undefined;
-      this.cameras.main.scrollY = Phaser.Math.Clamp(
-        this.player.y - H * 0.72,
-        0,
-        WORLD_H - H,
-      );
-      this.highestCameraY = this.cameras.main.scrollY;
-      this.invulnerable = this.elapsed + 2000;
-      this.locked = false;
-      this.hud.message("DE VOLTA AO CHECKPOINT");
-    });
-  }
   complete() {
     if (this.locked) return;
     this.locked = true;
@@ -355,62 +310,73 @@ export class GameScene extends Phaser.Scene {
     if (!this.player) return;
     if (Phaser.Input.Keyboard.JustDown(this.keys.ESC)) this.togglePause();
     if (this.paused) return;
-    const dt = Math.min(delta, 40);
-    this.elapsed += dt;
-    this.ledges.forEach((p) => p.step(this.elapsed));
-    if (!this.locked) {
-      if (this.support && this.support.active) {
-        const b = this.player.body as Phaser.Physics.Arcade.Body;
-        if (
-          this.support.body?.enable && (b.blocked.down || b.touching.down) &&
-          Math.abs(b.bottom - (this.support.y - 13.5)) < 15
-        ) {
-          this.player.x += this.support.dx;
-          this.player.y += this.support.dy;
-        }
+    if (!this.simulationReady) return;
+    const qaInput = this.qa?.input();
+    const axis = Math.sign(qaInput?.axis ||
+      Number(this.keys.D.isDown || this.keys.RIGHT.isDown || this.controls.right) -
+      Number(this.keys.A.isDown || this.keys.LEFT.isDown || this.controls.left)) as -1 | 0 | 1;
+    this.pendingJump ||= !!qaInput?.jump || Phaser.Input.Keyboard.JustDown(this.keys.SPACE) || this.controls.consumeJump();
+    this.accumulator += Math.min(delta, 100);
+    while (this.accumulator >= STEP_MS && !this.locked) {
+      const beforeLives = this.simulation.lives;
+      const beforeLanding = this.simulation.lastLanding;
+      const beforeYVelocity = this.simulation.vy;
+      const command = { axis, jump: this.pendingJump };
+      this.pendingJump = false;
+      stepSimulation(this.simulation, this.level, command);
+      this.gameSession?.record(command);
+      this.accumulator -= STEP_MS;
+      this.elapsed = this.simulation.tick * STEP_MS;
+      if (this.simulation.lastLanding !== beforeLanding)
+        this.land(this.ledges[this.simulation.lastLanding]);
+      if (beforeYVelocity >= 0 && this.simulation.vy < 0) this.audio.play("jump");
+      if (this.simulation.lives < beforeLives) {
+        this.hud.damage(this.simulation.lives);
+        this.audio.play("hurt");
+        this.cameras.main.shake(180, 0.009);
       }
-      const qaInput = this.qa?.input();
-      const axis =
-        qaInput?.axis ||
-        Number(
-          this.keys.D.isDown || this.keys.RIGHT.isDown || this.controls.right,
-        ) -
-          Number(
-            this.keys.A.isDown || this.keys.LEFT.isDown || this.controls.left,
-          );
-      if (
-        this.player.step(
-          this.elapsed,
-          axis,
-          qaInput?.jump ||
-            Phaser.Input.Keyboard.JustDown(this.keys.SPACE) ||
-            this.controls.consumeJump(),
-        )
-      ) {
-        this.audio.play("jump");
-        if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches)
-          this.burst(this.player.x, this.player.y + 35, getAtmosphere(this.level.id).jump, 5);
-        this.support = undefined;
+      if (this.simulation.status === "won") this.complete();
+      else if (this.simulation.status === "lost") {
+        this.locked = true;
+        // Persist the final loss commands, too; no reward is created.
+        void this.gameSession?.finish().catch(() => {});
+        this.time.delayedCall(650, () => this.scene.start("GameOver", {
+          count: this.simulation.collected.length, time: this.elapsed,
+        }));
       }
-      this.maxProgress = Math.max(
-        this.maxProgress,
-        progressAt(this.player.y + 40),
-      );
-      const cam = this.cameras.main;
-      const sy = this.player.y - cam.scrollY;
-      let target = cam.scrollY;
-      if (sy < 400) target = this.player.y - 400;
-      else if (sy > 760) target = this.player.y - 760;
-      this.highestCameraY = Math.min(this.highestCameraY, cam.scrollY);
-      target = Math.min(target, this.highestCameraY + 180);
-      cam.scrollY = Phaser.Math.Clamp(
-        Phaser.Math.Linear(cam.scrollY, target, 1 - Math.exp(-dt / 200)),
-        0,
-        WORLD_H - H,
-      );
-      if (this.player.y > WORLD_H + 30 || this.player.y > cam.scrollY + H + 110)
-        this.damage();
     }
+    const sim = this.simulation;
+    this.lives = sim.lives;
+    this.collected = sim.collected.length;
+    this.maxProgress = sim.maxProgress;
+    this.invulnerable = sim.invulnerableUntil;
+    this.support = sim.support >= 0 ? this.ledges[sim.support] : undefined;
+    this.ledges.forEach((p, i) => {
+      const at = platformAt(this.level, sim, i);
+      p.dx = at.x - p.x; p.dy = at.y - p.y;
+      const age = sim.activated[i] < 0 ? -1 : this.elapsed - sim.activated[i];
+      const warning = p.spec.kind === "beat" ? beatState(this.elapsed, p.spec.phase ?? 0).warning :
+        p.spec.kind === "temporary" && age >= 0 && age < 1700;
+      p.setPosition(at.x, at.y).setAlpha(at.solid ? warning ? 0.65 + Math.sin(this.elapsed / 70) * 0.25 : 1 : 0.16);
+      if (p.spec.kind === "beat") p.setTint(warning ? 0xffcd79 : at.solid ? 0xffffff : 0x77628e);
+    });
+    for (let i = 0; i < this.collectibleObjects.length; i++) {
+      const c = this.collectibleObjects[i];
+      if (c.active && sim.collected.includes(this.level.collectibles[i])) {
+        c.disableBody(true, true); this.audio.play("collect"); this.burst(c.x, c.y, 0xffcc69, 12);
+        if (this.collected === this.level.collectibles.length) this.hud.message("FILAMENTO COMPLETO! ✦");
+      }
+    }
+    const body = this.player.body as Phaser.Physics.Arcade.Body;
+    body.touching.down = sim.support >= 0;
+    body.velocity.set(sim.vx, sim.vy);
+    this.player.step(this.elapsed, axis, false);
+    body.velocity.set(sim.vx, sim.vy);
+    this.player.setPosition(sim.x, sim.feet - 40.5);
+    if (sim.status === "won") this.player.pose("celebrate");
+    else if (sim.status === "lost") this.player.pose("dead");
+    else if (sim.respawnAt) this.player.pose("hurt");
+    this.cameras.main.scrollY = sim.cameraY;
     for (const h of this.hazards) {
       const was = h.active;
       const pulse = hazardState(h.kind, this.elapsed, h.phase);
@@ -456,15 +422,6 @@ export class GameScene extends Phaser.Scene {
         Math.abs(h.y - this.player.y) < 400
       )
         this.audio.play("laser");
-      const b = this.player.body as Phaser.Physics.Arcade.Body;
-      if (
-        h.active &&
-        Phaser.Geom.Intersects.RectangleToRectangle(
-          new Phaser.Geom.Rectangle(b.x, b.y, b.width, b.height),
-          h.obj.getBounds(),
-        )
-      )
-        this.damage();
     }
     this.player.setAlpha(
       this.elapsed < this.invulnerable

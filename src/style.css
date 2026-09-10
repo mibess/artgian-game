@@ -104,3 +104,35 @@ canvas { display: block; touch-action: none; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation: none !important; }
 }
+.coupon-reward {
+  position: absolute; inset: 8% 4%; z-index: 40; overflow-y: auto;
+  box-sizing: border-box; padding: clamp(16px, 5cqw, 28px);
+  display: flex; flex-direction: column; gap: 16px;
+  color: #e8f5f3; background: #0b2b35; border: 2px solid #d5ac69;
+  border-radius: 22px; box-shadow: 0 0 0 100vmax #041b25b8;
+  font: 16px/1.45 "Trebuchet MS", Arial, sans-serif;
+  touch-action: pan-y;
+}
+.coupon-reward h2 { font-size: 24px; line-height: 1.2; margin: 0; color: #ffe1a1; }
+.coupon-reward p { margin: 0; }
+.coupon-reward input {
+  width: 100%; box-sizing: border-box; min-width: 0; padding: 12px 6px;
+  color: #fff; border: 1px dashed #99d3c8; border-radius: 8px;
+  background: #061d28; font: bold 16px/1.5 monospace; text-align: center;
+}
+.coupon-reward button, .coupon-reward a {
+  display: block; border-radius: 12px; border: 1px solid #ffe2a8;
+  padding: 13px 12px; text-align: center; background: #ffcb77;
+  color: #183039; font: bold 16px/1.4 Arial, sans-serif; text-decoration: none; cursor: pointer;
+}
+.coupon-reward [hidden] { display: none; }
+.coupon-reward button:disabled { opacity: .5; cursor: default; }
+.coupon-reward .coupon-close { color: #def5f1; background: #123842; border-color: #507b81; }
+.coupon-reward :focus-visible { outline: 3px solid #9aeedb; outline-offset: 3px; }
+.coupon-terms { font-size: 14px; color: #b7d7db; }
+.coupon-timer { font-variant-numeric: tabular-nums; font-weight: bold; }
+.game-sign-in {
+  position: absolute; bottom: 0; left: 0; right: 0; z-index: 20;
+  text-align: center; color: #ffda90; background: #061e29; padding: 7px;
+  font: 14px/1.4 Arial, sans-serif; text-decoration: underline;
+}

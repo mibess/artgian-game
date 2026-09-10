@@ -1,5 +1,7 @@
 import Phaser from "phaser";
 import { getLevel } from "../config/levels";
+import { couponReward } from "./CouponReward";
+import type { GameSession } from "../systems/GameSession";
 
 export function victory(s: Phaser.Scene, data: { count: number; time: number; lives?: number }) {
   const level = getLevel(s.registry.get("level"));
@@ -38,11 +40,22 @@ export function victory(s: Phaser.Scene, data: { count: number; time: number; li
     text(stat.x, 603, stat.value, 30, "#ffffff", true);
   }
   const all = data.count === level.collectibles.length;
-  text(270, 676, all ? "✦  COLEÇÃO COMPLETA!  ✦" : "CADA CAMADA É UMA CONQUISTA", 17, "#ffda90", true);
+  const showReward = () => {
+    if (document.querySelector(".coupon-reward")) return;
+    const saved = s.registry.get("rewardCompletionId") as string | undefined;
+    const session = s.registry.get("rewardSession") as GameSession | undefined;
+    const completion = saved ? Promise.resolve(saved) : session ? session.finish().then(run => {
+      s.registry.set("rewardCompletionId", run.completionId); return run.completionId!;
+    }) : Promise.reject(new Error("Partida em modo treino. Entre antes de iniciar uma nova partida para ganhar cupom."));
+    const cleanup = couponReward(completion);
+    s.events.once("shutdown", cleanup);
+  };
+  text(270, 676, "VER MEU CUPOM", 22, "#ffda90", true)
+    .setInteractive({ useHandCursor: true }).on("pointerdown", showReward);
   text(270, 708, all ? "Você encontrou todos os filamentos desta fase." : "Volte para encontrar os filamentos que faltaram.", 14, "#a8c8ce");
   let leaving = false;
   const navigate = (scene: string) => {
-    if (leaving) return;
+    if (leaving || document.querySelector(".coupon-reward")) return;
     leaving = true;
     if (reducedMotion) { s.scene.start(scene); return; }
     s.cameras.main.fadeOut(220, 4, 27, 37);
@@ -65,6 +78,7 @@ export function victory(s: Phaser.Scene, data: { count: number; time: number; li
     s.input.keyboard?.off("keydown-SPACE", replay);
     s.input.keyboard?.off("keydown-ENTER", replay);
   });
+  showReward();
   if (!reducedMotion) {
     s.cameras.main.fadeIn(350, 4, 27, 37);
     s.tweens.add({ targets: product, y: 359, duration: 1800, yoyo: true, repeat: -1, ease: "Sine.InOut" });
