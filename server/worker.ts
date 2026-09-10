@@ -37,24 +37,14 @@ const exact = (value: Record<string, unknown>, keys: string[]) => {
   if (Object.keys(value).length !== keys.length || keys.some(k => !(k in value)))
     throw new ApiError(400, "Campos inválidos.");
 };
-async function identity(request: Request, env: Env) {
-  // Sites dispatch authenticates and replaces this header. Never expose the Worker
-  // on an origin that bypasses dispatch or accepts arbitrary identity headers.
-  const subject = request.headers.get("oai-authenticated-user-id");
-  if (!subject || subject.length > 512) throw new ApiError(401, "Entre para jogar valendo cupom.");
-  const subjectHash = await hash(subject);
-  await env.DB.prepare("INSERT INTO players (id, subject) VALUES (?, ?) ON CONFLICT(subject) DO NOTHING")
-    .bind(crypto.randomUUID(), subjectHash).run();
-  return (await env.DB.prepare("SELECT id FROM players WHERE subject = ?").bind(subjectHash)
-    .first<{ id: string }>())!.id;
-}
-async function session(request: Request, env: Env, playerId: string) {
+async function session(request: Request, env: Env): Promise<string> {
   const token = request.headers.get("Cookie")?.split(";").map(v => v.trim())
     .find(v => v.startsWith("game_session="))?.slice(13);
-  if (!token || !/^[a-f0-9]{64}$/.test(token)) throw new ApiError(401, "Sessão expirada. Recarregue para entrar.");
-  const found = await env.DB.prepare("SELECT player_id FROM sessions WHERE token_hash = ? AND player_id = ? AND expires_at > ?")
-    .bind(await hash(token), playerId, Date.now()).first();
-  if (!found) throw new ApiError(401, "Sessão expirada. Recarregue para entrar.");
+  if (!token || !/^[a-f0-9]{64}$/.test(token)) throw new ApiError(401, "Sessão expirada. Recarregue o jogo.");
+  const found = await env.DB.prepare("SELECT player_id FROM sessions WHERE token_hash = ? AND expires_at > ?")
+    .bind(await hash(token), Date.now()).first<{ player_id: string }>();
+  if (!found) throw new ApiError(401, "Sessão expirada. Recarregue o jogo.");
+  return found.player_id;
 }
 function runResult(run: Run) {
   const s = JSON.parse(run.state) as Simulation;
@@ -69,19 +59,25 @@ export async function handleApi(request: Request, env: Env, fetchStore: typeof f
     if (request.headers.get("sec-fetch-site") === "cross-site" ||
       (request.method === "POST" && request.headers.get("Origin") !== url.origin))
       throw new ApiError(403, "Origem inválida.");
-    const playerId = await identity(request, env);
     if (path === "/api/game/session" && request.method === "POST") {
       exact(await body(request), []);
-      try { await session(request, env, playerId); return json({ authenticated: true }); } catch (e) {
+      try { await session(request, env); return json({ ready: true }); } catch (e) {
         if (!(e instanceof ApiError) || e.status !== 401) throw e;
       }
       const token = crypto.randomUUID().replaceAll("-", "") + crypto.randomUUID().replaceAll("-", "");
-      await env.DB.prepare("INSERT INTO sessions (token_hash, player_id, expires_at) VALUES (?, ?, ?)")
-        .bind(await hash(token), playerId, now + 30 * 86400_000).run();
-      return json({ authenticated: true }, 200, { "Set-Cookie":
+      // Anonymous identity is created exclusively by the server. No login or
+      // forwarded identity headers are required or accepted as ownership proof.
+      const playerId = crypto.randomUUID();
+      await env.DB.batch([
+        env.DB.prepare("INSERT INTO players (id, subject) VALUES (?, ?)")
+          .bind(playerId, `anonymous-${crypto.randomUUID()}`),
+        env.DB.prepare("INSERT INTO sessions (token_hash, player_id, expires_at) VALUES (?, ?, ?)")
+          .bind(await hash(token), playerId, now + 30 * 86400_000),
+      ]);
+      return json({ ready: true }, 200, { "Set-Cookie":
         `game_session=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=2592000${url.protocol === "https:" ? "; Secure" : ""}` });
     }
-    await session(request, env, playerId);
+    const playerId = await session(request, env);
     if (path === "/api/game/latest" && request.method === "GET") {
       const run = await env.DB.prepare(`SELECT r.* FROM runs r JOIN completions c ON c.run_id = r.id
         WHERE r.player_id = ? ORDER BY c.created_at DESC LIMIT 1`).bind(playerId).first<Run>();

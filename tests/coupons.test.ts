@@ -15,13 +15,13 @@ async function fixture() {
   const { db, sqlite } = localDatabase();
   const env: Env = { DB: db, COUPON_GAME_API_KEY: "test-secret-".repeat(4),
     ASSETS: { fetch: async () => new Response(null, { status: 404 }) } };
-  let cookie = "", subject = "test-player-a", calls = 0;
+  let cookie = "", calls = 0;
   let store = (async () => { calls++; return success(); }) as typeof fetch;
   const request = async (path: string, data?: unknown, headers: Record<string, string> = {}) => {
     const response = await handleApi(new Request(`https://game.test/api/game/${path}`, {
       method: data === undefined ? "GET" : "POST",
       headers: { Origin: "https://game.test", "Content-Type": "application/json",
-        "oai-authenticated-user-id": subject, Cookie: cookie, ...headers },
+        Cookie: cookie, ...headers },
       body: data === undefined ? undefined : JSON.stringify(data),
     }), env, store);
     if (response.headers.has("Set-Cookie")) cookie = response.headers.get("Set-Cookie")!.split(";")[0];
@@ -47,24 +47,24 @@ async function fixture() {
     return result.completionId as string;
   };
   return { sqlite, env, request, runId, complete, calls: () => calls,
-    setStore: (fn: typeof fetch) => { store = fn; }, setSubject: (id: string) => { subject = id; } };
+    setStore: (fn: typeof fetch) => { store = fn; }, clearCookie: () => { cookie = ""; } };
 }
 function success(status = 201) {
   return new Response(JSON.stringify({ code: "GAME-0123456789ABCDEF0123", discountPercent: 20,
     expiresAt: new Date(Date.now() + 1800_000).toISOString(), expiresInSeconds: 1799, reusable: false }), { status });
 }
 
-test("forged victories, missing identity/session, cross-origin and foreign runs cannot issue coupons", async t => {
+test("forged victories, missing session, cross-origin and foreign runs cannot issue coupons", async t => {
   const f = await fixture(); t.after(() => f.sqlite.close());
   assert.equal((await f.request(`runs/${f.runId}/inputs`, { sequence: 0, commands: [], won: true })).status, 400);
   assert.equal((await f.request(`runs/${f.runId}/inputs`, { sequence: 0, commands: [{ axis: 1, jump: false, y: 300 }] })).status, 400);
   assert.equal((await f.request(`runs/${f.runId}/inputs`, { sequence: 0, commands: [{ axis: 0, jump: false }] })).status, 200);
   const guessed = f.sqlite.prepare("SELECT completion_id FROM runs WHERE id = ?").get(f.runId)!.completion_id;
   assert.equal((await f.request(`rewards/${guessed}`, {})).status, 404);
-  assert.equal((await f.request("session", {}, { "oai-authenticated-user-id": "" })).status, 401);
+  assert.equal((await f.request("session", {}, { "oai-authenticated-user-id": "ignored-header" })).status, 200);
   assert.equal((await f.request("latest", undefined, { Cookie: "" })).status, 401);
   assert.equal((await f.request("session", {}, { Origin: "https://evil.test" })).status, 403);
-  f.setSubject("other-player");
+  f.clearCookie();
   assert.equal((await f.request(`rewards/${guessed}`, {})).status, 401);
   await f.request("session", {});
   assert.equal((await f.request(`runs/${f.runId}/inputs`, { sequence: 1, commands: [{ axis: 0, jump: false }] })).status, 404);
@@ -137,7 +137,7 @@ test("410 is terminal and never generates another reward", async t => {
   assert.equal((await f.request(`rewards/${id}`, {})).status, 410);
   assert.equal((await f.request(`rewards/${id}`, {})).status, 410);
   assert.equal(calls, 1);
-  f.setSubject("another-user"); await f.request("session", {});
+  f.clearCookie(); await f.request("session", {});
   assert.equal((await f.request(`rewards/${id}`, {})).status, 404);
 });
 
@@ -210,10 +210,10 @@ test("altered replay, expired session and faster-than-real-time input are reject
   assert.equal(f.calls(), 0);
 });
 
-test("session identity survives new cookies; client cannot replace server IDs", async t => {
+test("anonymous session stays stable on reload; client cannot replace server IDs", async t => {
   const f = await fixture(); t.after(() => f.sqlite.close());
   const original = f.sqlite.prepare("SELECT player_id FROM runs WHERE id = ?").get(f.runId)!.player_id;
-  await f.request("session", {}, { Cookie: "" });
+  await f.request("session", {});
   assert.equal(f.sqlite.prepare("SELECT count(*) AS n FROM players").get()!.n, 1);
   assert.equal(f.sqlite.prepare("SELECT player_id FROM sessions LIMIT 1").get()!.player_id, original);
   assert.equal((await f.request("runs", { levelId: "workshop", playerId: "spoofed" })).status, 400);

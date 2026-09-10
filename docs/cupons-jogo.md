@@ -15,19 +15,17 @@ não emitem cupons reais.
   O backend parte do estado inicial, reproduz os comandos e confirma a vitória
   pela colisão com a plataforma final, com vidas restantes. Não existe endpoint
   que aceite `won`, posição, vidas, `playerId` ou `completionId` como prova.
-- A identidade vem do header `oai-authenticated-user-id`, autenticado e substituído
-  pelo dispatcher Sites. Um UUID de jogador é associado ao hash dessa identidade
-  no D1; cookies novos e dispositivos diferentes mantêm o mesmo jogador.
-- O backend também valida um token aleatório de sessão, persistindo apenas seu
-  hash, com cookie HttpOnly, SameSite=Strict e Secure em HTTPS. Validade: 30 dias.
-  Toda mutação exige Origin igual ao do jogo. Autorização por proprietário também
-  se aplica às partidas e recompensas.
-- O Worker deve ser acessível **somente pelo dispatcher Sites**. Se for migrado
-  para outra hospedagem, substituir a autenticação por uma sessão autenticada pelo
-  novo backend; nunca confiar nesse header vindo diretamente da internet.
-- Pessoas sem login podem treinar. Para ganhar cupons, usam o link “Entrar para
-  jogar valendo cupom” antes da partida. O login navega para a rota nativa Sites
-  `/signin-with-chatgpt`; não envia credenciais ao jogo.
+- Não há login. Na primeira visita, o backend cria um UUID de jogador anônimo e
+  uma sessão aleatória no D1. O navegador recebe apenas um cookie HttpOnly,
+  SameSite=Strict e Secure em HTTPS, válido por 30 dias; o banco guarda o hash
+  do token. Recargas reutilizam a sessão e o jogador originais.
+- Partidas e recompensas pertencem ao jogador da sessão. IDs enviados pelo cliente
+  e headers de identidade não substituem essa associação. Toda mutação exige
+  Origin igual ao do jogo; a vitória é validada pelas regras compartilhadas.
+- Apagar os cookies, trocar de navegador ou deixar a sessão expirar cria outro
+  jogador anônimo. Sem conta, não há recuperação da recompensa entre dispositivos.
+- O usuário escolhe personagem e fase, joga e recebe o cupom ao concluir. Se o
+  backend estiver inacessível no início, a partida avisa que não poderá emitir cupom.
 - Lotes fora de ordem, alterados, adiantados em relação ao relógio do servidor,
   ou de partidas com mais de 30 minutos são rejeitados. Repetições idênticas do
   último lote retornam a confirmação já salva. Uma troca de versão das regras
@@ -35,7 +33,8 @@ não emitem cupons reais.
 
 Isso comprova uma execução válida das regras, não a presença de uma pessoa:
 automação que envie comandos válidos ainda pode jogar. Os limites por jogador
-autenticado da loja continuam aplicáveis.
+anônimo e o limite global da loja continuam aplicáveis; sem login, o limite por
+jogador não identifica a mesma pessoa após a exclusão dos cookies.
 
 ## Persistência e emissão
 
@@ -44,7 +43,7 @@ conclusão acontece na mesma transação que confirma a vitória. Cada conclusã
 um UUID, uma chave `conclusao-<UUID>` e os bytes originais do corpo
 `{playerId, completionId}`, definidos no servidor e imutáveis nas tentativas.
 
-`POST /api/game/rewards/:completionId` valida sessão e propriedade e chama,
+`POST /api/game/rewards/:completionId` valida sessão anônima e propriedade e chama,
 exclusivamente no backend, `POST https://www.artgian.com.br/api/coupons/game`.
 Envia Bearer com o segredo, JSON e Idempotency-Key; não encaminha Origin,
 cookies nem headers do navegador. Redirecionamentos do upstream são rejeitados.
@@ -83,9 +82,8 @@ npm run build
 ```
 
 O preview Vite inclui a API local e aplica as migrações a `.local/game.sqlite`.
-O login de desenvolvimento é simulado apenas em localhost/127.0.0.1, e remove
-headers de identidade fornecidos externamente. Acesso por IP de rede fica em
-modo treino. A pasta `.local` e arquivos `.env` estão ignorados pelo Git.
+A sessão anônima funciona também no acesso por IP de rede; não é necessário
+simular login. A pasta `.local` e arquivos `.env` estão ignorados pelo Git.
 
 Por padrão, o servidor local **não contata a loja real**. Para uma homologação
 explicitamente desejada, injete `COUPON_GAME_API_KEY` e
@@ -111,8 +109,9 @@ concorrência, timeout, 5xx, 429, 410 e expiração. A migração inicial está 
    e da loja, com o mesmo valor e pelo menos 32 caracteres.
 3. Na loja, aplicar a migração `drizzle/0015_gray_manta.sql` e publicar a rota
    conforme o contrato do Artgian Studio. A rota de produção depende disso.
-4. Homologar uma partida autenticada e uma emissão, recarregar para conferir a
+4. Homologar uma partida anônima e uma emissão, recarregar para conferir a
    mesma recompensa e validar o uso no checkout. Não apagar conclusões para
    tentar reemitir cupons. Corrigir incidentes preservando chave, corpo e IDs.
 
-Não foram publicados código, migrações ou segredos por esta implementação local.
+A chave de produção é configurada exclusivamente como segredo de runtime no Sites;
+seu valor nunca deve constar neste documento ou no repositório.

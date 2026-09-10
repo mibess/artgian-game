@@ -9,7 +9,7 @@ export default defineConfig(({ command }) => ({
   // Export playable assets; keep raw animation frames and duplicate source sheets local.
   publicDir: command === "serve" ? "public" : false,
   build: { outDir: "dist/client" },
-  plugins: [sites(), gameApi(), tailwindcss(), {
+  plugins: [sites({ mockAuth: false }), gameApi(), tailwindcss(), {
     name: "game-assets",
     apply: "build",
     async closeBundle() {

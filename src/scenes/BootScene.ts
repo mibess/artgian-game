@@ -78,9 +78,7 @@ export class BootScene extends Phaser.Scene {
     loadLevelAssets(this);
     prepareEnvironments(this);
     // Keep the complete loading screen visible for a fixed extra second.
-    void restoreCompletion().then(completion => {
-      this.registry.set("authenticated", true); return completion;
-    }).catch(() => { this.registry.set("authenticated", false); return null; }).then(completion => {
+    void restoreCompletion().catch(() => null).then(completion => {
       this.time.delayedCall(1000, () => {
         if (completion?.completionId) {
           this.registry.set("level", completion.levelId);

@@ -132,15 +132,7 @@ export class MenuScene extends Phaser.Scene {
       .on("pointerdown", start).on("pointerover", () => buttonArt.setAlpha(0.9))
       .on("pointerout", () => buttonArt.setAlpha(1));
     text(270, 919, "← → personagem   ·   ↑ ↓ fase   ·   Enter jogar", 14, "#b3d4db");
-    if (!this.registry.get("authenticated")) {
-      const signIn = document.createElement("a");
-      signIn.className = "game-sign-in";
-      signIn.href = "/signin-with-chatgpt?return_to=%2F";
-      signIn.target = "_top";
-      signIn.textContent = "Entrar para jogar valendo cupom";
-      document.querySelector("#game")!.append(signIn);
-      this.events.once("shutdown", () => signIn.remove());
-    } else text(270, 942, "Conclua uma fase para ganhar um cupom Artgian", 14, "#a5c8d1");
+    text(270, 942, "Conclua uma fase para ganhar um cupom Artgian", 14, "#a5c8d1");
     const cycleCharacter = (direction: number) => {
       const index = characters.findIndex(c => c.id === this.registry.get("character"));
       selectCharacter(characters[(index + direction + characters.length) % characters.length].id);

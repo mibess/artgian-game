@@ -46,7 +46,7 @@ export function victory(s: Phaser.Scene, data: { count: number; time: number; li
     const session = s.registry.get("rewardSession") as GameSession | undefined;
     const completion = saved ? Promise.resolve(saved) : session ? session.finish().then(run => {
       s.registry.set("rewardCompletionId", run.completionId); return run.completionId!;
-    }) : Promise.reject(new Error("Partida em modo treino. Entre antes de iniciar uma nova partida para ganhar cupom."));
+    }) : Promise.reject(new Error("Não foi possível conectar esta partida ao servidor. Verifique sua conexão e jogue novamente para ganhar um cupom."));
     const cleanup = couponReward(completion);
     s.events.once("shutdown", cleanup);
   };

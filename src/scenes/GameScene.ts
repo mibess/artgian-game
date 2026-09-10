@@ -154,7 +154,7 @@ export class GameScene extends Phaser.Scene {
       this.hud.message("PARTIDA VALENDO CUPOM");
     }).catch(() => {
       if (this.scene.isActive() && this.registry.get("activeRunStart") === startToken)
-        this.hud.message("MODO TREINO • ENTRE PARA JOGAR VALENDO CUPOM");
+        this.hud.message("SEM CONEXÃO • CUPOM INDISPONÍVEL NESTA PARTIDA");
     }).finally(() => {
       if (this.scene.isActive() && this.registry.get("activeRunStart") === startToken) this.simulationReady = true;
     });
