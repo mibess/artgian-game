@@ -395,7 +395,7 @@ export class AudioSystem {
       kind === "hurt" ? 40 : f * 1.7,
       c.currentTime + 0.14,
     );
-    g.gain.setValueAtTime(0.045, c.currentTime);
+    g.gain.setValueAtTime(0.0675, c.currentTime);
     g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 0.22);
     o.connect(g).connect(c.destination);
     o.start();
