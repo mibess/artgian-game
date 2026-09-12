@@ -54,6 +54,11 @@ antes de enviar a requisição.
   persistida, de 1 segundo até 5 minutos, reutilizando a chave e o corpo.
 - 429: o próximo instante permitido considera Retry-After (segundos ou data HTTP),
   sem diminuir a espera progressiva. Atualizar a página não antecipa esse instante.
+  Durante essa espera, retorna o último cupom salvo ainda dentro da validade do
+  mesmo jogador, com `previousCoupon: true`, sem renovar seu prazo ou emitir outro.
+  A conclusão nova permanece pendente, com `{rateLimited: true}` em `reward`,
+  para preservar o motivo da espera após recargas. Sem cupom anterior válido,
+  a resposta pendente sinaliza `rateLimited: true` e a tela explica o limite.
 - 200/201: guarda código, percentual, expiração e um prazo calculado conservadoramente
   a partir de `expiresAt` e `expiresInSeconds`. Recarregar consulta esse registro.
 - 410 ou expiração local: estado terminal; nenhuma nova emissão para a conclusão.

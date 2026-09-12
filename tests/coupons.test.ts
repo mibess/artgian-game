@@ -36,10 +36,10 @@ async function fixture() {
   const runId = (await created.json()).runId;
   // Advance server wall time without altering gameplay state or inputs.
   sqlite.prepare("UPDATE runs SET created_at = ? WHERE id = ?").run(Date.now() - 600_000, runId);
-  const complete = async () => {
+  const complete = async (completedRunId = runId) => {
     let result: any;
     for (let i = 0; i < winningInputs.length; i += 120) {
-      const response = await request(`runs/${runId}/inputs`, { sequence: i / 120, commands: winningInputs.slice(i, i + 120) });
+      const response = await request(`runs/${completedRunId}/inputs`, { sequence: i / 120, commands: winningInputs.slice(i, i + 120) });
       assert.equal(response.status, 200, await response.clone().text());
       result = await response.json();
     }
@@ -128,6 +128,58 @@ test("timeout, 5xx and 429 persist backoff and reuse identical request bytes acr
   }
   assert.equal((await f.request(`rewards/${id}`, {})).status, 200);
   assert.equal(new Set(requests).size, 1);
+});
+
+test("rate limit shows the last valid coupon across reloads without issuing or extending it", async t => {
+  const f = await fixture(); t.after(() => f.sqlite.close());
+  const firstId = await f.complete();
+  const first = await (await f.request(`rewards/${firstId}`, {})).json();
+  const original = f.sqlite.prepare("SELECT reward FROM completions WHERE id = ?").get(firstId)!.reward;
+  const newRun = await (await f.request("runs", { levelId: "workshop" })).json();
+  f.sqlite.prepare("UPDATE runs SET created_at = ? WHERE id = ?").run(Date.now() - 600_000, newRun.runId);
+  const nextId = await f.complete(newRun.runId);
+  let calls = 0;
+  f.setStore((async () => { calls++; return new Response(null, { status: 429, headers: { "Retry-After": "300" } }); }) as typeof fetch);
+  for (let reload = 0; reload < 2; reload++) {
+    const response = await f.request(`rewards/${nextId}`, {});
+    assert.equal(response.status, 200);
+    const result = await response.json();
+    assert.equal(result.previousCoupon, true);
+    assert.equal(result.code, first.code);
+    assert.equal(result.expiresAt, first.expiresAt);
+    assert.ok(result.expiresInSeconds <= first.expiresInSeconds);
+  }
+  assert.equal(calls, 1);
+  assert.equal(f.sqlite.prepare("SELECT reward FROM completions WHERE id = ?").get(firstId)!.reward, original);
+  assert.equal(f.sqlite.prepare("SELECT status FROM completions WHERE id = ?").get(nextId)!.status, "pending");
+  // Expiration during the cooldown must never revive the old code.
+  const expired = { ...JSON.parse(original as string), deadline: Date.now() - 1000 };
+  f.sqlite.prepare("UPDATE completions SET reward = ? WHERE id = ?").run(JSON.stringify(expired), firstId);
+  const noValidCoupon = await f.request(`rewards/${nextId}`, {});
+  assert.equal(noValidCoupon.status, 202);
+  assert.equal((await noValidCoupon.json()).rateLimited, true);
+  assert.equal(calls, 1);
+  // Once the store allows issuance, retry the new completion with its original identity.
+  f.sqlite.prepare("UPDATE completions SET next_attempt_at = 0 WHERE id = ?").run(nextId);
+  f.setStore((async () => success()) as typeof fetch);
+  assert.equal((await (await f.request(`rewards/${nextId}`, {})).json()).previousCoupon, undefined);
+});
+
+test("rate-limit fallback never exposes another player's coupon", async t => {
+  const f = await fixture(); t.after(() => f.sqlite.close());
+  const firstId = await f.complete();
+  await f.request(`rewards/${firstId}`, {});
+  f.clearCookie(); await f.request("session", {});
+  const newRun = await (await f.request("runs", { levelId: "workshop" })).json();
+  f.sqlite.prepare("UPDATE runs SET created_at = ? WHERE id = ?").run(Date.now() - 600_000, newRun.runId);
+  const nextId = await f.complete(newRun.runId);
+  f.setStore((async () => new Response(null, { status: 429, headers: { "Retry-After": "300" } })) as typeof fetch);
+  const response = await f.request(`rewards/${nextId}`, {});
+  assert.equal(response.status, 202);
+  const result = await response.json();
+  assert.equal(result.rateLimited, true);
+  assert.equal(result.code, undefined);
+  assert.equal((await f.request(`rewards/${firstId}`, {})).status, 404);
 });
 
 test("410 is terminal and never generates another reward", async t => {

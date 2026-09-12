@@ -20,6 +20,18 @@ function coupon(value: unknown): Coupon {
   return { code: c.code, discountPercent: c.discountPercent, expiresAt: c.expiresAt,
     expiresInSeconds: c.expiresInSeconds, reusable: false };
 }
+async function limitedReward(env: Env, playerId: string, delay: number, now: number): Promise<Response> {
+  const previous = await env.DB.prepare(`SELECT reward FROM completions
+    WHERE player_id = ? AND status = 'ready' AND json_extract(reward, '$.deadline') > ?
+    ORDER BY created_at DESC, id DESC LIMIT 1`).bind(playerId, now)
+    .first<{ reward: string }>();
+  if (previous) {
+    const saved = JSON.parse(previous.reward) as Coupon & { deadline: number };
+    return json({ status: "ready", ...saved, previousCoupon: true,
+      expiresInSeconds: Math.max(0, Math.floor((saved.deadline - now) / 1000)) });
+  }
+  return pending(delay, true, true);
+}
 export async function claimReward(env: Env, id: string, playerId: string,
   fetchStore: typeof fetch = fetch, now = Date.now()): Promise<Response> {
   let c = await env.DB.prepare("SELECT * FROM completions WHERE id = ? AND player_id = ?")
@@ -35,6 +47,8 @@ export async function claimReward(env: Env, id: string, playerId: string,
   }
   if (c.status === "gone") return gone();
   if (c.status === "error") return json({ status: "error", error: "Não foi possível liberar a recompensa. Tente falar com a Artgian." }, 422);
+  if (c.next_attempt_at > now && c.reward && JSON.parse(c.reward).rateLimited === true)
+    return limitedReward(env, playerId, c.next_attempt_at - now, now);
   if (c.next_attempt_at > now || c.lease_until > now)
     return pending(Math.max(c.next_attempt_at, c.lease_until) - now, c.attempts > 0);
   // Claim in D1 before any network I/O. Survives parallel requests and process restarts.
@@ -69,6 +83,8 @@ export async function claimReward(env: Env, id: string, playerId: string,
       status = deadline > receivedAt ? "ready" : "gone";
     } else if (response.status === 410) status = "gone";
     else if (response.status === 429 || response.status >= 500) {
+      // Pending metadata survives reloads without associating an old code with a new win.
+      if (response.status === 429) reward = JSON.stringify({ rateLimited: true });
       delay = retryDelay(response.headers.get("Retry-After"), c.attempts, Date.now());
       console.error(JSON.stringify({ event: "coupon_retry", reason: "upstream_status", status: response.status, attempt: c.attempts }));
     }
@@ -87,14 +103,18 @@ export async function claimReward(env: Env, id: string, playerId: string,
   await env.DB.prepare(`UPDATE completions SET status = ?, reward = ?, next_attempt_at = ?,
     lease_until = 0, lease_token = NULL WHERE id = ? AND lease_token = ?`)
     .bind(status, reward, Date.now() + delay, id, lease).run();
-  if (status === "pending") return pending(delay, true);
+  if (status === "pending") {
+    if (reward && JSON.parse(reward).rateLimited === true)
+      return limitedReward(env, playerId, delay, Date.now());
+    return pending(delay, true);
+  }
   return claimReward(env, id, playerId, fetchStore);
 }
 export const json = (body: unknown, status = 200, headers: Record<string, string> = {}) =>
   new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json",
     "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff", ...headers } });
 const gone = () => json({ status: "gone", error: "Esta recompensa não está mais disponível." }, 410);
-const pending = (delay: number, retrying = false) => {
+const pending = (delay: number, retrying = false, rateLimited = false) => {
   const seconds = Math.max(1, Math.ceil(delay / 1000));
-  return json({ status: "pending", retrying, retryAfterSeconds: seconds }, 202, { "Retry-After": String(seconds) });
+  return json({ status: "pending", retrying, rateLimited, retryAfterSeconds: seconds }, 202, { "Retry-After": String(seconds) });
 };

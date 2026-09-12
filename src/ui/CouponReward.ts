@@ -56,7 +56,9 @@ export function couponReward(completion: Promise<string>, parent = document.quer
       if (response.status === 200 || response.status === 201) {
         finishLoading();
         title.textContent = `${data.discountPercent}% de desconto nos produtos`;
-        status.textContent = "Sua recompensa está pronta.";
+        status.textContent = data.previousCoupon
+          ? "Você atingiu o limite de novos cupons. Aqui está seu último cupom ainda válido."
+          : "Sua recompensa está pronta.";
         code.value = data.code; code.hidden = copy.hidden = timer.hidden = false;
         // Anchor to server remaining time using a monotonic clock, discounting network
         // transit. The absolute expiresAt is validated and persisted by the backend.
@@ -74,13 +76,16 @@ export function couponReward(completion: Promise<string>, parent = document.quer
       }
       if (response.status === 410) { unavailable("Esta recompensa não está mais disponível."); return; }
       if (response.status === 202 || response.status === 429 || response.status >= 500) {
-        loadingTitle.textContent = "Seu cupom está a caminho";
+        loadingTitle.textContent = data.rateLimited ? "Limite de novos cupons atingido" : "Seu cupom está a caminho";
+        if (data.rateLimited) loadingHint.textContent = "Sua conclusão está salva. Você pode voltar depois em ‘Ver meu último cupom’.";
         const wait = Math.max(1, Number(response.headers.get("Retry-After")) || 0,
           Number(data.retryAfterSeconds) || 0, Math.min(60, 2 ** attempt));
         const retryAt = Date.now() + wait * 1000;
         const showRetry = () => {
           const seconds = Math.max(0, Math.ceil((retryAt - Date.now()) / 1000));
-          status.textContent = `A loja ainda está processando. Nova consulta em ${seconds}s. Sua conclusão está salva.`;
+          status.textContent = data.rateLimited
+            ? `Não há cupom anterior ainda válido. Nova tentativa em ${Math.floor(seconds / 60)}min ${seconds % 60}s.`
+            : `A loja ainda está processando. Nova consulta em ${seconds}s. Sua conclusão está salva.`;
         };
         clearInterval(interval); showRetry(); interval = setInterval(showRetry, 1000);
         timeout = setTimeout(() => { clearInterval(interval); void poll(id, attempt + 1); }, wait * 1000); return;
