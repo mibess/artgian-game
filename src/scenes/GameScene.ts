@@ -7,6 +7,7 @@ import { getLevel, hazardState, beatState, type HazardKind } from "../config/lev
 import { CheckpointSystem } from "../systems/CheckpointSystem";
 import { PrintingProgressSystem } from "../systems/PrintingProgressSystem";
 import { AudioSystem } from "../systems/AudioSystem";
+import { NavigationGuard } from "../systems/NavigationGuard";
 import { MobileControls } from "../ui/MobileControls";
 import { HUD } from "../ui/HUD";
 import { workshop } from "../art/Workshop";
@@ -160,16 +161,20 @@ export class GameScene extends Phaser.Scene {
       if (this.scene.isActive() && this.registry.get("activeRunStart") === startToken) this.simulationReady = true;
     });
     this.keys = this.input.keyboard!.addKeys(
-      "A,D,LEFT,RIGHT,SPACE,ESC",
+      "A,D,LEFT,RIGHT,SPACE",
     ) as typeof this.keys;
     this.input.on("pointerdown", () => this.audio.unlock());
     this.input.keyboard!.on("keydown", () => this.audio.unlock());
     this.game.events.on("blur", this.onBlur, this);
+    this.game.events.on("hidden", this.onBlur, this);
+    const navigationGuard = new NavigationGuard(() => this.onBlur());
     this.events.once("shutdown", () => {
       if (this.registry.get("activeRunStart") === startToken) this.registry.remove("activeRunStart");
       this.audio.destroy();
       this.printer.destroy();
       this.game.events.off("blur", this.onBlur, this);
+      this.game.events.off("hidden", this.onBlur, this);
+      navigationGuard.destroy();
     });
   }
   onBlur() {
@@ -181,11 +186,12 @@ export class GameScene extends Phaser.Scene {
     this.time.paused = this.paused;
     this.controls.setPaused(this.paused);
     this.controls.clear();
+    this.pendingJump = false;
+    this.input.keyboard?.resetKeys();
     if (this.paused) {
       this.physics.pause();
       this.tweens.pauseAll();
       this.audio.pauseMusic();
-      this.hud.message("PAUSADO • TOQUE EM ▶ PARA CONTINUAR");
     } else {
       this.physics.resume();
       this.tweens.resumeAll();
@@ -312,7 +318,6 @@ export class GameScene extends Phaser.Scene {
   }
   update(_time: number, delta: number) {
     if (!this.player) return;
-    if (Phaser.Input.Keyboard.JustDown(this.keys.ESC)) this.togglePause();
     if (this.paused) return;
     if (!this.simulationReady) return;
     const qaInput = this.qa?.input();

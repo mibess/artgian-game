@@ -20,6 +20,8 @@ export class MobileControls {
   private root = document.createElement("div");
   private abort = new AbortController();
   private pauseButton: HTMLButtonElement;
+  private pauseDialog = document.createElement("dialog");
+  private resumeButton: HTMLButtonElement;
   constructor(s: Phaser.Scene, actions: Actions) {
     const { signal } = this.abort;
     this.root.className = "game-controls";
@@ -88,6 +90,39 @@ export class MobileControls {
     button(utilities, "Voltar à seleção", icons.menu, "utility-button")
       .addEventListener("click", actions.menu, { signal });
     this.root.append(pad, utilities);
+    this.pauseDialog.className = "pause-dialog";
+    this.pauseDialog.setAttribute("aria-labelledby", "pause-title");
+    this.pauseDialog.setAttribute("aria-describedby", "pause-description");
+    this.pauseDialog.innerHTML = `<div class="pause-symbol">${icons.pause}</div>
+      <h2 id="pause-title">JOGO PAUSADO</h2>
+      <p id="pause-description">Tudo pronto para continuar?<br>Toque no botão abaixo e volte ao jogo.</p>`;
+    this.resumeButton = button(this.pauseDialog, "Continuar jogando",
+      icons.play + "<span>CONTINUAR JOGANDO</span>", "resume-button");
+    this.resumeButton.autofocus = true;
+    this.resumeButton.addEventListener("click", actions.pause, { signal });
+    button(this.pauseDialog, "Voltar à seleção", "Voltar à seleção", "pause-menu-button")
+      .addEventListener("click", actions.menu, { signal });
+    this.pauseDialog.addEventListener("cancel", event => {
+      event.preventDefault();
+      actions.pause();
+    }, { signal });
+    // Dialog keyboard input must not also trigger Phaser movement or pause keys.
+    this.pauseDialog.addEventListener("keydown", event => {
+      actions.unlock();
+      event.stopPropagation();
+    }, { signal });
+    this.pauseDialog.addEventListener("keyup", event => event.stopPropagation(), { signal });
+    document.addEventListener("keydown", event => {
+      if (event.code !== "Escape") return;
+      // Handle Escape once, before native dialog dismissal or Phaser's key queue.
+      event.preventDefault();
+      event.stopPropagation();
+      if (!event.repeat) {
+        actions.unlock();
+        actions.pause();
+      }
+    }, { capture: true, signal });
+    this.root.append(this.pauseDialog);
     this.root.addEventListener("pointerdown", actions.unlock, { capture: true, signal });
     this.root.addEventListener("keydown", e => {
       actions.unlock();
@@ -99,6 +134,7 @@ export class MobileControls {
     s.events.once("shutdown", () => {
       this.clear();
       this.abort.abort();
+      this.pauseDialog.close();
       this.root.remove();
     });
   }
@@ -107,6 +143,15 @@ export class MobileControls {
     this.pauseButton.setAttribute("aria-pressed", String(paused));
     this.pauseButton.setAttribute("aria-label", paused ? "Continuar" : "Pausar");
     this.pauseButton.title = paused ? "Continuar" : "Pausar";
+    for (const button of this.buttons.values()) button.disabled = paused;
+    if (paused) {
+      this.pauseDialog.showModal();
+      this.resumeButton.focus({ preventScroll: true });
+    } else {
+      this.pauseDialog.close();
+      // Keep Space available for jumping after resuming with the keyboard.
+      if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+    }
     this.clear();
   }
   sync() {

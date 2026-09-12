@@ -5,6 +5,7 @@ export class AudioSystem {
   muted = false;
   hum?: OscillatorNode;
   gain?: GainNode;
+  private masterGain?: GainNode;
 
   // Music sequencer and synthesizer state
   private musicGain?: GainNode;
@@ -15,6 +16,7 @@ export class AudioSystem {
   private nextStepTime = 0;
   private stepIndex = 0;
   private isMusicPlaying = false;
+  private musicPaused = false;
   private musicVolume = 0.08365;
 
   unlock() {
@@ -23,6 +25,10 @@ export class AudioSystem {
         window.AudioContext ||
         (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       this.ctx = new AudioCtx();
+      // One shared output raises every sound by 50%, including effect tails.
+      this.masterGain = this.ctx.createGain();
+      this.masterGain.gain.value = 1.5;
+      this.masterGain.connect(this.ctx.destination);
 
       // Master gain for ambient / hum
       this.gain = this.ctx.createGain();
@@ -31,20 +37,20 @@ export class AudioSystem {
       // Master gain for music
       this.musicGain = this.ctx.createGain();
       this.musicGain.gain.value = this.muted ? 0 : this.musicVolume;
-      this.musicGain.connect(this.ctx.destination);
+      this.musicGain.connect(this.masterGain);
 
       // Low hum for ambient grounding
       this.hum = this.ctx.createOscillator();
       this.hum.type = "triangle";
       this.hum.frequency.value = 65;
-      this.hum.connect(this.gain).connect(this.ctx.destination);
+      this.hum.connect(this.gain).connect(this.masterGain);
       this.hum.start();
 
       this.initNoiseBuffer();
     }
 
     void this.ctx.resume().then(() => {
-      if (this.currentLevelId && !this.isMusicPlaying) {
+      if (this.currentLevelId && !this.isMusicPlaying && !this.musicPaused) {
         this.startLevelMusic(this.currentLevelId);
       }
     });
@@ -62,6 +68,7 @@ export class AudioSystem {
   }
 
   startLevelMusic(levelId: string) {
+    this.musicPaused = false;
     this.currentLevelId = levelId;
     this.currentTrack = levelTracks[levelId] ?? levelTracks.workshop;
 
@@ -317,6 +324,7 @@ export class AudioSystem {
   }
 
   pauseMusic() {
+    this.musicPaused = true;
     this.isMusicPlaying = false;
     if (this.timerId) {
       window.clearInterval(this.timerId);
@@ -330,6 +338,7 @@ export class AudioSystem {
   }
 
   resumeMusic() {
+    this.musicPaused = false;
     if (!this.ctx || !this.currentTrack) return;
     this.isMusicPlaying = true;
     this.nextStepTime = this.ctx.currentTime + 0.05;
@@ -365,6 +374,7 @@ export class AudioSystem {
   }
 
   stopMusic() {
+    this.musicPaused = true;
     this.isMusicPlaying = false;
     if (this.timerId) {
       window.clearInterval(this.timerId);
@@ -377,7 +387,7 @@ export class AudioSystem {
   }
 
   play(kind: "jump" | "collect" | "hurt" | "laser" | "platform" | "complete") {
-    if (!this.ctx || this.muted) return;
+    if (!this.ctx || !this.masterGain || this.muted) return;
     const c = this.ctx,
       o = c.createOscillator(),
       g = c.createGain();
@@ -397,7 +407,7 @@ export class AudioSystem {
     );
     g.gain.setValueAtTime(0.0675, c.currentTime);
     g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 0.22);
-    o.connect(g).connect(c.destination);
+    o.connect(g).connect(this.masterGain);
     o.start();
     o.stop(c.currentTime + 0.23);
   }

@@ -88,6 +88,50 @@ canvas { display: block; touch-action: none; }
 }
 .utility-button svg { width: max(20px, 4.5cqw); height: max(20px, 4.5cqw); }
 .utility-button[aria-pressed="true"] { color: #ffd18a; border-color: #ffd18a90; }
+.pause-dialog {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  box-sizing: border-box;
+  width: min(420px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  padding: clamp(20px, 5vw, 32px);
+  border: 2px solid #80d6c5;
+  border-radius: 24px;
+  background: linear-gradient(155deg, #173f49, #091f2c);
+  color: #edfff8;
+  text-align: center;
+  pointer-events: auto;
+  box-shadow: 0 16px 64px #0008;
+}
+.pause-dialog::backdrop { background: #021018cc; backdrop-filter: blur(4px); }
+.pause-symbol {
+  display: grid; place-items: center; margin: 0 auto 16px;
+  width: 60px; height: 60px; border-radius: 50%; background: #9aeedb1a; color: #9aeedb;
+}
+.pause-symbol svg { width: 32px; height: 32px; }
+.pause-dialog h2 { margin: 0 0 12px; font-size: clamp(24px, 7vw, 30px); font-weight: bold; }
+.pause-dialog p { margin: 0 0 24px; font-size: 16px; line-height: 1.5; color: #c2e2e2; }
+.pause-dialog .resume-button {
+  width: 100%; height: auto; min-height: 64px; padding: 14px 12px; gap: 10px;
+  border-radius: 16px; border-color: #ffe9be; font-size: clamp(14px, 4vw, 18px);
+  color: #15343a; background: linear-gradient(160deg, #ffe3a5, #ffbc60);
+  box-shadow: 0 5px 0 #935c2d, 0 8px 24px #e9a54125;
+}
+.pause-dialog .resume-button svg { width: 26px; height: 26px; }
+.pause-dialog .pause-menu-button {
+  margin-top: 18px; width: 100%; height: auto; min-height: 44px; padding: 10px;
+  border-radius: 12px; background: transparent; box-shadow: none; font-size: 14px;
+}
+@media (max-height: 500px) {
+  .pause-dialog { padding: 20px; }
+  .pause-symbol { display: none; }
+  .pause-dialog h2 { font-size: 24px; margin-bottom: 8px; }
+  .pause-dialog p { margin-bottom: 16px; }
+  .pause-dialog .resume-button { min-height: 56px; }
+  .pause-dialog .pause-menu-button { margin-top: 12px; }
+}
 @media (orientation: landscape) and (max-height: 600px) {
   #viewport { padding-bottom: max(76px, calc(env(safe-area-inset-bottom) + 70px)); }
   /* Touch controls stay outside the reduced landscape playfield. */
@@ -131,3 +175,28 @@ canvas { display: block; touch-action: none; }
 .coupon-reward :focus-visible { outline: 3px solid #9aeedb; outline-offset: 3px; }
 .coupon-terms { font-size: 14px; color: #b7d7db; }
 .coupon-timer { font-variant-numeric: tabular-nums; font-weight: bold; }
+.coupon-reward[data-loading="true"] { border-color: #ffcf81; }
+.coupon-reward[data-loading="true"] .coupon-feedback {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  flex: 1 0 auto; gap: 16px; padding: 24px 16px; text-align: center;
+  border: 1px solid #ffcf8166; border-radius: 18px;
+  background: radial-gradient(ellipse at top, #ffcc7820, #061d28 75%);
+}
+.coupon-feedback h3 {
+  margin: 0; color: #ffe1a1; font-size: clamp(24px, 6cqw, 30px);
+  font-weight: bold; line-height: 1.15;
+}
+.coupon-feedback [role="status"] { font-size: 16px; font-variant-numeric: tabular-nums; }
+.coupon-feedback .coupon-loading-hint { color: #d6fff0; font-size: 16px; font-weight: bold; }
+.coupon-spinner {
+  width: 64px; height: 64px; flex-shrink: 0;
+  border: 5px solid #ffcf8126; border-top-color: #ffcf81; border-right-color: #ffcf81;
+  border-radius: 50%; animation: coupon-spin 1s linear infinite;
+}
+.coupon-reward[data-loading="true"] .coupon-close { background: transparent; border-color: #507b81; }
+@keyframes coupon-spin { to { transform: rotate(360deg); } }
+@media (orientation: landscape) and (max-height: 600px) {
+  .coupon-reward { position: fixed; inset: 12px max(16px, calc((100vw - 560px) / 2)); padding: 16px; }
+  .coupon-reward[data-loading="true"] .coupon-feedback { padding: 16px; gap: 12px; }
+  .coupon-spinner { width: 40px; height: 40px; }
+}
