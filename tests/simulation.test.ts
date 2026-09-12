@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { levels, type Level } from "../src/config/levels.ts";
-import { initialState, stepSimulation } from "../src/shared/simulation.ts";
+import { initialState, platformAt, stepSimulation } from "../src/shared/simulation.ts";
 import { playthrough } from "./playthrough.ts";
 
 for (const level of levels) test(`server can replay a real winning route in ${level.id}`, () => {
@@ -47,4 +47,26 @@ test("falls onto a platform while exiting platform X-range within the frame", ()
   stepSimulation(state, level, { axis: 0, jump: false });
   assert.equal(state.support, 0);
   assert.ok(Math.abs(state.feet - (level.platforms[0].y - 13.5)) < 1e-9);
+});
+
+test("stays supported while a vertical platform moves downward", () => {
+  const level = levels[0];
+  const platformIndex = 15;
+  const state = initialState(level);
+  state.tick = 60;
+  const platform = platformAt(level, state, platformIndex);
+  state.x = platform.x;
+  state.feet = platform.y - 13.5;
+  state.vy = 0;
+  state.support = platformIndex;
+  state.lastLanding = platformIndex;
+  state.groundAt = state.tick * 1000 / 60;
+
+  for (let frame = 0; frame < 90; frame++) {
+    stepSimulation(state, level, { axis: 0, jump: false });
+    const current = platformAt(level, state, platformIndex);
+    assert.equal(state.support, platformIndex);
+    assert.ok(Math.abs(state.feet - (current.y - 13.5)) < 1e-9);
+    assert.equal(state.vy, 0);
+  }
 });

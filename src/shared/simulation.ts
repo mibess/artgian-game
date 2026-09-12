@@ -62,10 +62,14 @@ export function stepSimulation(s: Simulation, level: Level, input: Command): voi
     s.cameraY = clamp(s.feet - 40.5 - H * 0.72, 0, WORLD_H - H);
     s.highestCameraY = s.cameraY;
   }
+  let retainedSupport = false;
   if (s.support >= 0) {
     const p = platformAt(level, s, s.support);
     const prev = platformAt(level, s, s.support, previousTime);
-    if (p.solid) { s.x += p.x - prev.x; s.feet += p.y - prev.y; s.groundAt = time; }
+    if (p.solid) {
+      s.x += p.x - prev.x; s.feet += p.y - prev.y; s.groundAt = time;
+      retainedSupport = true;
+    }
     else s.support = -1;
   }
   if (input.jump) s.jumpAt = time;
@@ -73,18 +77,33 @@ export function stepSimulation(s: Simulation, level: Level, input: Command): voi
     Math.sign(s.vx) * Math.max(0, Math.abs(s.vx) - 2100 * dt);
   if (time - s.jumpAt < 130 && time - s.groundAt < 110) {
     s.vy = -JUMP; s.support = -1; s.groundAt = s.jumpAt = -999;
+    retainedSupport = false;
   }
   const oldFeet = s.feet;
   const oldX = s.x;
   s.x = clamp(s.x + s.vx * dt, 25, 515);
-  s.feet += s.vy * dt + GRAVITY * dt * dt / 2;
-  s.vy = Math.min(1100, s.vy + GRAVITY * dt);
-  s.support = -1;
-  if (s.vy >= 0) {
+  const feetHalf = 13;
+  if (retainedSupport && s.support >= 0) {
+    const p = level.platforms[s.support];
+    const at = platformAt(level, s, s.support);
+    if (s.x + feetHalf > at.x - p.w / 2 && s.x - feetHalf < at.x + p.w / 2) {
+      s.feet = at.y - PLATFORM_FEET_OFFSET;
+      s.vy = 0;
+      s.groundAt = time;
+    } else {
+      s.support = -1;
+      retainedSupport = false;
+    }
+  }
+  if (!retainedSupport) {
+    s.feet += s.vy * dt + GRAVITY * dt * dt / 2;
+    s.vy = Math.min(1100, s.vy + GRAVITY * dt);
+    s.support = -1;
+  }
+  if (!retainedSupport && s.vy >= 0) {
     let landing = -1, landingY = Infinity;
     const feetDelta = s.feet - oldFeet;
     const xDelta = s.x - oldX;
-    const feetHalf = 13;
     const relEps = 1e-6;
     for (let i = 0; i < level.platforms.length; i++) {
       const p = level.platforms[i], now = platformAt(level, s, i);
