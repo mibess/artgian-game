@@ -42,12 +42,13 @@ export class MenuScene extends Phaser.Scene {
       const ring = this.add.ellipse(0, 0, 110, 18, colors[index], 0.16).setStrokeStyle(2, colors[index], 0.4);
       const portrait = this.add.image(0, 0, character.id + "-idle", 0)
         .setOrigin(character.originX, character.originY).setDisplaySize(190, 190);
+      const fx = portrait.preFX?.addColorMatrix();
       this.portraits.push(portrait);
       const pill = this.add.graphics();
       const label = text(0, 36, character.name, 20, "#fff6df", true);
       root.add([halo, ring, portrait, pill, label]);
       const zone = this.add.zone(x, 394, 148, 220).setInteractive({ useHandCursor: true });
-      return { character, root, portrait, halo, ring, pill, label, zone };
+      return { character, root, portrait, fx, halo, ring, pill, label, zone };
     });
     const selectCharacter = (id: string, animate = true) => {
       if (this.starting) return;
@@ -56,14 +57,25 @@ export class MenuScene extends Phaser.Scene {
         const active = card.character.id === id;
         card.pill.clear().fillStyle(active ? 0xffce79 : 0x0b3540, 0.96)
           .fillRoundedRect(-65, 20, 130, 34, 17);
-        card.label.setText((active ? "✓ " : "") + card.character.name).setColor(active ? "#172d30" : "#d7edee");
+        card.label.setText((active ? "✓ " : "") + card.character.name).setColor(active ? "#172d30" : "#869fa5");
         this.tweens.killTweensOf(card.portrait);
         this.tweens.add({ targets: card.portrait, scaleX: (active ? 212 : 185) / 256,
-          scaleY: (active ? 212 : 185) / 256, alpha: active ? 1 : 0.82,
+          scaleY: (active ? 212 : 185) / 256, alpha: active ? 1 : 0.72,
           duration: animate ? duration : 0, ease: "Back.Out" });
-        card.halo.setAlpha(active ? 1 : 0.18);
-        card.ring.setAlpha(active ? 1 : 0.35);
+        card.halo.setAlpha(active ? 1 : 0);
+        card.ring.setAlpha(active ? 1 : 0.2);
         card.portrait.setY(0);
+        if (card.fx) {
+          card.fx.reset();
+          if (!active) {
+            card.fx.grayscale(1);
+          }
+        }
+        if (active) {
+          card.portrait.clearTint();
+        } else {
+          card.portrait.setTint(0x94a2a8);
+        }
         if (active && animate && !this.reducedMotion)
           this.tweens.add({ targets: card.portrait, y: -16, duration: 180, yoyo: true, ease: "Sine.Out" });
       }
@@ -76,15 +88,17 @@ export class MenuScene extends Phaser.Scene {
       const x = 108 + index * 162, root = this.add.container(x, 651);
       const border = this.add.graphics();
       const preview = this.add.image(0, -18, level.background).setDisplaySize(138, 96);
+      const previewFx = preview.preFX?.addColorMatrix();
       const tint = this.add.rectangle(0, -18, 138, 96, 0x061e29, 0.23);
       const scale = Math.min(103 / level.productWidth, 65 / level.productHeight);
       const product = this.add.image(0, -16, level.product).setDisplaySize(level.productWidth * scale, level.productHeight * scale);
+      const productFx = product.preFX?.addColorMatrix();
       const label = text(0, 53, level.name, 20, "#f3f9f6", true);
       const badge = text(53, -65, "✓", 17, "#132d35", true);
       const badgeBg = this.add.circle(53, -65, 12, 0xffce79);
       root.add([border, preview, tint, product, label, badgeBg, badge]);
       const zone = this.add.zone(x, 651, 148, 166).setInteractive({ useHandCursor: true });
-      return { level, root, border, badge, badgeBg, zone };
+      return { level, root, border, preview, previewFx, tint, product, productFx, label, badge, badgeBg, zone };
     });
     const productLabel = text(270, 754, "", 16, "#ffdc9e", true);
     const hint = text(270, 787, "", 14, "#a6c7ce").setWordWrapWidth(456).setAlign("center");
@@ -101,14 +115,34 @@ export class MenuScene extends Phaser.Scene {
       }
       for (const card of stageCards) {
         const active = card.level.id === level.id;
-        card.border.clear().fillStyle(active ? 0x16454c : 0x0c2b37)
+        card.border.clear().fillStyle(active ? 0x16454c : 0x091b22)
           .fillRoundedRect(-74, -83, 148, 166, 18)
-          .lineStyle(active ? 3 : 1, active ? 0xffce79 : 0x28505a)
+          .lineStyle(active ? 3 : 1, active ? 0xffce79 : 0x223c44)
           .strokeRoundedRect(-74, -83, 148, 166, 18);
         card.badge.setVisible(active); card.badgeBg.setVisible(active);
+        card.label.setColor(active ? "#f3f9f6" : "#7c979e");
+        if (card.previewFx) {
+          card.previewFx.reset();
+          if (!active) {
+            card.previewFx.grayscale(1);
+          }
+        }
+        if (card.productFx) {
+          card.productFx.reset();
+          if (!active) {
+            card.productFx.grayscale(1);
+          }
+        }
+        if (active) {
+          card.preview.clearTint();
+          card.product.clearTint();
+        } else {
+          card.preview.setTint(0x8a9aa0);
+          card.product.setTint(0x8a9aa0);
+        }
         this.tweens.killTweensOf(card.root);
         this.tweens.add({ targets: card.root, y: active ? 643 : 651,
-          alpha: active ? 1 : 0.78, duration: animate ? duration : 0, ease: "Cubic.Out" });
+          alpha: active ? 1 : 0.68, duration: animate ? duration : 0, ease: "Cubic.Out" });
       }
     };
     stageCards.forEach(card => card.zone.on("pointerdown", () => selectLevel(card.level.id)));
