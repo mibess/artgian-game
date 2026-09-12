@@ -105,7 +105,7 @@ canvas { display: block; touch-action: none; }
   pointer-events: auto;
   box-shadow: 0 16px 64px #0008;
 }
-.pause-dialog::backdrop { background: #021018cc; backdrop-filter: blur(4px); }
+.pause-dialog::backdrop { background: #021018e8; }
 .pause-symbol {
   display: grid; place-items: center; margin: 0 auto 16px;
   width: 60px; height: 60px; border-radius: 50%; background: #9aeedb1a; color: #9aeedb;

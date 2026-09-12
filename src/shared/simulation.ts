@@ -145,8 +145,11 @@ export function stepSimulation(s: Simulation, level: Level, input: Command): voi
   if (screenY < 400) target = y - 400;
   else if (screenY > 760) target = y - 760;
   s.highestCameraY = Math.min(s.highestCameraY, s.cameraY);
-  target = Math.min(target, s.highestCameraY + 180);
-  s.cameraY = clamp(s.cameraY + (target - s.cameraY) * (1 - Math.exp(-STEP_MS / 200)), 0, WORLD_H - H);
+  // Follow downward immediately once the player reaches the lower safe line.
+  // Limiting the return to the highest camera position left valid lower
+  // platforms (and the player standing on them) outside the viewport.
+  s.cameraY = clamp(target > s.cameraY ? target :
+    s.cameraY + (target - s.cameraY) * (1 - Math.exp(-STEP_MS / 200)), 0, WORLD_H - H);
   const hit = level.hazards.some(h => {
     const at = hazardAt(h, time);
     return at.active && s.x + 13 > at.x - h.w / 2 && s.x - 13 < at.x + h.w / 2 &&

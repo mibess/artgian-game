@@ -70,3 +70,25 @@ test("stays supported while a vertical platform moves downward", () => {
     assert.equal(state.vy, 0);
   }
 });
+
+test("camera follows a long fall so a lower landing stays visible", () => {
+  const level = {
+    ...levels[0],
+    platforms: [{ x: 270, y: 3000, w: 220, kind: "normal" as const }],
+    collectibles: [],
+    hazards: [],
+  };
+  const state = initialState(level);
+  state.cameraY = 1300;
+  state.highestCameraY = 1300;
+  state.x = 270;
+  state.feet = 2200;
+  state.vy = 1000;
+
+  for (let frame = 0; frame < 80 && state.support !== 0; frame++)
+    stepSimulation(state, level, { axis: 0, jump: false });
+
+  assert.equal(state.support, 0);
+  assert.ok(state.feet - 40.5 - state.cameraY <= 760,
+    "the player remains above the lower safe line after landing");
+});

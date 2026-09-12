@@ -16,6 +16,7 @@ import type { VisualQA } from "../dev/VisualQA";
 import { GameSession } from "../systems/GameSession";
 import { initialState, stepSimulation, platformAt, STEP_MS, type Simulation } from "../shared/simulation";
 import { hazardAnimationPose } from "../config/hazardAnimations";
+import { refreshCanvasTextures } from "../art/runtimeTextures";
 interface Hazard {
   obj: Phaser.GameObjects.Rectangle;
   kind: HazardKind;
@@ -167,6 +168,8 @@ export class GameScene extends Phaser.Scene {
     this.input.keyboard!.on("keydown", () => this.audio.unlock());
     this.game.events.on("blur", this.onBlur, this);
     this.game.events.on("hidden", this.onBlur, this);
+    const refreshTextures = () => refreshCanvasTextures(this.textures);
+    this.game.renderer.on(Phaser.Renderer.Events.RESTORE_WEBGL, refreshTextures);
     const navigationGuard = new NavigationGuard(() => this.onBlur());
     this.events.once("shutdown", () => {
       if (this.registry.get("activeRunStart") === startToken) this.registry.remove("activeRunStart");
@@ -174,6 +177,7 @@ export class GameScene extends Phaser.Scene {
       this.printer.destroy();
       this.game.events.off("blur", this.onBlur, this);
       this.game.events.off("hidden", this.onBlur, this);
+      this.game.renderer.off(Phaser.Renderer.Events.RESTORE_WEBGL, refreshTextures);
       navigationGuard.destroy();
     });
   }
@@ -195,6 +199,9 @@ export class GameScene extends Phaser.Scene {
     } else {
       this.physics.resume();
       this.tweens.resumeAll();
+      // Some Android browsers discard canvas-backed GPU textures while a
+      // modal is composited over WebGL. Re-upload them before the next frame.
+      refreshCanvasTextures(this.textures);
       this.audio.resumeMusic();
       this.hud.toast.setAlpha(0);
     }
@@ -366,7 +373,8 @@ export class GameScene extends Phaser.Scene {
       const age = sim.activated[i] < 0 ? -1 : this.elapsed - sim.activated[i];
       const warning = p.spec.kind === "beat" ? beatState(this.elapsed, p.spec.phase ?? 0).warning :
         p.spec.kind === "temporary" && age >= 0 && age < 1700;
-      p.setPosition(at.x, at.y).setAlpha(at.solid ? warning ? 0.65 + Math.sin(this.elapsed / 70) * 0.25 : 1 : 0.16);
+      p.setPosition(at.x, at.y).setVisible(true)
+        .setAlpha(at.solid ? warning ? 0.65 + Math.sin(this.elapsed / 70) * 0.25 : 1 : 0.16);
       if (p.spec.kind === "beat") p.setTint(warning ? 0xffcd79 : at.solid ? 0xffffff : 0x77628e);
     });
     for (let i = 0; i < this.collectibleObjects.length; i++) {
