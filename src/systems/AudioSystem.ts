@@ -15,7 +15,7 @@ export class AudioSystem {
   private nextStepTime = 0;
   private stepIndex = 0;
   private isMusicPlaying = false;
-  private musicVolume = 0.1195;
+  private musicVolume = 0.08365;
 
   unlock() {
     if (!this.ctx) {
