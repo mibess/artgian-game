@@ -83,6 +83,7 @@ export class GameScene extends Phaser.Scene {
     this.highestCameraY = WORLD_H - H;
     this.checkpoint = new CheckpointSystem();
     this.audio = new AudioSystem();
+    this.audio.startLevelMusic(this.level.id);
     this.physics.world.setBounds(0, 0, W, WORLD_H);
     workshop(this);
     this.printer = new PrintingProgressSystem(this);
@@ -183,10 +184,12 @@ export class GameScene extends Phaser.Scene {
     if (this.paused) {
       this.physics.pause();
       this.tweens.pauseAll();
+      this.audio.pauseMusic();
       this.hud.message("PAUSADO • TOQUE EM ▶ PARA CONTINUAR");
     } else {
       this.physics.resume();
       this.tweens.resumeAll();
+      this.audio.resumeMusic();
       this.hud.toast.setAlpha(0);
     }
   }
@@ -292,6 +295,7 @@ export class GameScene extends Phaser.Scene {
     this.player.setVelocity(0, 0);
     this.player.setAccelerationX(0);
     this.player.pose("celebrate");
+    this.audio.duckMusic(3.0);
     this.audio.play("complete");
     this.hud.message("ÚLTIMA CAMADA…");
     this.time.delayedCall(1300, () => {
