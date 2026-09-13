@@ -50,8 +50,11 @@ cookies nem headers do navegador. Redirecionamentos do upstream são rejeitados:
 e trata respostas 3xx sem segui-las. O runtime Workers rejeita `redirect: "error"`
 antes de enviar a requisição.
 
-- Timeout de 8 segundos, erro de rede, resposta inválida ou 5xx: espera progressiva
+- Timeout de 8 segundos, erro de rede ou 5xx: espera progressiva
   persistida, de 1 segundo até 5 minutos, reutilizando a chave e o corpo.
+- Resposta 200/201 fora do contrato esperado (incluindo percentual não permitido):
+  estado de erro persistido, sem repetição automática, para não manter o jogador
+  em uma espera infinita pelo mesmo resultado idempotente.
 - 429: o próximo instante permitido considera Retry-After (segundos ou data HTTP),
   sem diminuir a espera progressiva. Atualizar a página não antecipa esse instante.
   Durante essa espera, retorna o último cupom salvo ainda dentro da validade do

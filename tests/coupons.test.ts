@@ -249,6 +249,25 @@ test("permanent upstream errors do not retry or rotate the key", async t => {
   }
 });
 
+test("invalid successful coupon response is terminal instead of loading forever", async t => {
+  const f = await fixture(); t.after(() => f.sqlite.close());
+  const id = await f.complete(); let calls = 0;
+  f.setStore((async () => {
+    calls++;
+    return new Response(JSON.stringify({
+      code: "GAME-INVALIDPERCENT", discountPercent: 15,
+      expiresAt: new Date(Date.now() + 1800_000).toISOString(),
+      expiresInSeconds: 1799, reusable: false,
+    }), { status: 201 });
+  }) as typeof fetch);
+  const first = await f.request(`rewards/${id}`, {});
+  assert.equal(first.status, 422);
+  assert.equal((await first.json()).status, "error");
+  assert.equal((await f.request(`rewards/${id}`, {})).status, 422);
+  assert.equal(f.sqlite.prepare("SELECT status FROM completions WHERE id = ?").get(id)!.status, "error");
+  assert.equal(calls, 1);
+});
+
 test("Workers-compatible redirect mode never forwards the secret to a redirect target", async t => {
   const f = await fixture(); t.after(() => f.sqlite.close());
   const id = await f.complete(); let calls = 0;

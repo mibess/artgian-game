@@ -92,12 +92,16 @@ export async function claimReward(env: Env, id: string, playerId: string,
   } catch (error) {
     const reason = !env.COUPON_GAME_API_KEY || env.COUPON_GAME_API_KEY.length < 32 ? "missing_configuration" :
       error instanceof Error && error.message === "Invalid coupon response" ? "invalid_response" : "transport";
-    console.error(JSON.stringify({ event: "coupon_retry", reason, attempt: c.attempts,
+    // A successful response with an invalid contract is deterministic for this
+    // idempotency key. Retrying would only fetch the same unusable coupon forever.
+    if (reason === "invalid_response") status = "error";
+    console.error(JSON.stringify({ event: reason === "invalid_response" ? "coupon_rejected" : "coupon_retry",
+      reason, attempt: c.attempts,
       errorType: error instanceof Error ? error.name : "unknown",
       detail: error instanceof Error ? error.message
         .replaceAll(env.COUPON_GAME_API_KEY ?? "__no_key__", "[redacted]")
         .replaceAll(c.request_body, "[redacted]").slice(0, 200) : "unknown" }));
-    // Ambiguous timeout/transport/invalid success: retain the original key AND body.
+    // Ambiguous timeout/transport failures retain the original key AND body.
     // Do not log upstream response bodies, codes or credentials.
   }
   await env.DB.prepare(`UPDATE completions SET status = ?, reward = ?, next_attempt_at = ?,
