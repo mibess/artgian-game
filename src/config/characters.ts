@@ -2,12 +2,14 @@ export interface Character {
   id: string; name: string; originX: number; originY: number;
   animationScale: { idle: number; walk: number; jump: number };
   jumpFrames: { start: number; apex: number; fallEnd: number };
+  frameCount?: number;
+  idleFrameMs?: number;
 }
-// Reserved for the user's artwork; never selectable until all three sheets exist.
 export const margo: Character = {
-  id: "margo", name: "Margô", originX: 0.5, originY: 0.93,
+  id: "margo", name: "Margô", originX: 0.5, originY: 238 / 256,
   animationScale: { idle: 1, walk: 1, jump: 1 },
-  jumpFrames: { start: 12, apex: 35, fallEnd: 53 },
+  jumpFrames: { start: 6, apex: 23, fallEnd: 34 },
+  frameCount: 60, idleFrameMs: 1000 / 24,
 };
 export const characters: Character[] = [
   {
@@ -29,9 +31,15 @@ export const characters: Character[] = [
     animationScale: { idle: 1, walk: 1.04, jump: 1.13 },
     jumpFrames: { start: 12, apex: 35, fallEnd: 53 },
   },
+  margo,
 ];
-export function registerMargo() {
-  if (!characters.some(character => character.id === margo.id)) characters.push(margo);
+export const characterFrameCount = (character: Character) => character.frameCount ?? 64;
+export function characterSheetPath(character: Character, action: string) {
+  return `assets/${character.id}/${character.id === "margo" ? "runtime/" : ""}${character.id}_${action}_sheet.png`;
+}
+export function landingFrame(character: Character, progress: number) {
+  const start = character.jumpFrames.fallEnd + 1;
+  return start + Math.round(Math.max(0, Math.min(1, progress)) * (characterFrameCount(character) - 1 - start));
 }
 export function getCharacter(id: unknown): Character {
   return characters.find((character) => character.id === id) ?? characters[0];

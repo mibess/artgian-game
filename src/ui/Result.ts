@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { getCharacter } from "../config/characters";
+import { getCharacter, characterFrameCount } from "../config/characters";
 import { getLevel } from "../config/levels";
 import { victory } from "./Victory";
 export function result(
@@ -36,7 +36,7 @@ export function result(
     })
     .setOrigin(0.5);
   s.add
-    .image(270, 308, win ? level.product : character.id + "-jump", win ? undefined : 63)
+    .image(270, 308, win ? level.product : character.id + "-jump", win ? undefined : characterFrameCount(character) - 1)
     .setDisplaySize(win ? level.productWidth * productScale : 184 * character.animationScale.jump,
       win ? level.productHeight * productScale : 184 * character.animationScale.jump);
   s.add
