@@ -1,11 +1,15 @@
-# Margô — personagem aguardando a arte
+# Margô — animações da personagem
 
-Coloque nesta pasta os três PNGs transparentes (2048 × 2048, grade 8 × 8, quadros 256 × 256):
+Os três PNGs originais são preservados nesta pasta:
 
 - `margo_idle_sheet.png`
 - `margo_walk_sheet.png`
 - `margo_jump_sheet.png`
 
-Reinicie o Vite ou faça novo build. Margô aparece automaticamente na seleção somente quando os três arquivos existirem. A fase Quintal já funciona com os personagens atuais.
+Cada arquivo contém 60 quadros em uma grade 8 × 8; as quatro últimas células estão vazias. O idle original mede 8640 × 15360, e walk/jump medem 15360 × 8640.
 
-Orientação: personagem olhando para a direita. Centro horizontal x=128 e linha das patas em y≈238, constante entre poses. O salto usa os quadros 12 (saída), 35 (ápice) e 53 (queda). Pode ajustar origem, escala por ação e quadros na configuração `margo` de `src/config/characters.ts` quando a arte final estiver pronta. O corpo de colisão segue o padrão atual do jogo; a escala específica da gata ainda precisa ser conferida com a arte real.
+O jogo carrega somente as versões otimizadas em `runtime/`: 2048 × 2048, quadros 256 × 256, mantendo os 60 quadros e a transparência. Os originais grandes não entram no build de produção.
+
+Para atualizar depois de substituir os originais, execute `python3 scripts/pack-margo-sheets.py` na raiz do projeto (requer Pillow). O script valida dimensões, células vazias e possíveis cortes. Cada ação usa uma transformação fixa, sem recentralizar cada quadro; caminhada e salto compartilham escala e apoio das patas. Os originais não são sobrescritos.
+
+Margô está disponível na seleção. O idle roda a 24 fps; a caminhada acompanha a velocidade; o salto acompanha subida, ápice e queda, seguido pelo pouso. A configuração fica em `src/config/characters.ts`. As colisões seguem as mesmas regras dos outros personagens.

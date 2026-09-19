@@ -17,6 +17,7 @@ export default defineConfig(({ command }) => ({
         const name = basename(source);
         const path = relative("public", source).replaceAll("\\", "/");
         return name !== ".DS_Store" && !["mib-idle", "mib-walk", "mib-jump"].includes(name)
+          && !/^assets\/margo\/margo_(idle|walk|jump)_sheet\.png$/.test(path)
           && !/^assets\/levels\/garden\/animations\/bee-(idle|warn)-sheet(?:\/|$)/.test(path)
           // Garden sheets are emitted once by Vite and loaded by their resolved URL.
           && !/^assets\/levels\/garden\/animations\/.*_sheet\.png$/.test(path)

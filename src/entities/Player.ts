@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import { SPEED, JUMP } from "../config/gameConfig";
-import { getCharacter, type Character } from "../config/characters";
+import { getCharacter, characterFrameCount, landingFrame, type Character } from "../config/characters";
 
 export type PlayerState =
   | "idle"
@@ -33,8 +33,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.setDisplaySize(58, 81).setVisible(false);
     this.visual = s.add
       .image(x, y + 40.5, this.visualTexture, this.visualFrame)
-      // The character is centered around x=102 and stands near y=238 inside
-      // each 256px cell, so anchor the sheets on the physics body's feet.
+      // Anchor each character's sheets on the physics body's feet.
       .setOrigin(this.character.originX, this.character.originY)
       .setDisplaySize(165.6, 165.6)
       .setDepth(10);
@@ -91,7 +90,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
         1,
       );
       this.visualTexture = this.character.id + "-jump";
-      this.visualFrame = 54 + Math.round(progress * 9);
+      this.visualFrame = landingFrame(this.character, progress);
     } else if (this.state === "run") {
       const frameDuration = Phaser.Math.Linear(
         62,
@@ -99,10 +98,10 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
         Math.abs(b.velocity.x) / SPEED,
       );
       this.visualTexture = this.character.id + "-walk";
-      this.visualFrame = Math.floor(now / frameDuration) % 64;
+      this.visualFrame = Math.floor(now / frameDuration) % characterFrameCount(this.character);
     } else {
       this.visualTexture = this.character.id + "-idle";
-      this.visualFrame = Math.floor(now / 90) % 64;
+      this.visualFrame = Math.floor(now / (this.character.idleFrameMs ?? 90)) % characterFrameCount(this.character);
     }
 
     this.wasGround = grounded;
@@ -121,7 +120,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     const size = 165.6 * this.character.animationScale[action];
     this.visual
       .setPosition(this.x, this.y + 40.5)
-      .setTexture(pose.texture, pose.frame)
+      .setTexture(pose.texture, Math.min(pose.frame, characterFrameCount(this.character) - 1))
       .setDisplaySize(size, size)
       .setFlipX(this.flipX)
       .setAlpha(this.alpha);

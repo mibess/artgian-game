@@ -2,7 +2,7 @@ import { animateGardenSprite } from "../art/Garden";
 import Phaser from "phaser";
 import { restoreCompletion } from "../systems/GameSession";
 import { getLevel, levels } from "../config/levels";
-import { characters, getCharacter } from "../config/characters";
+import { characters, getCharacter, characterFrameCount } from "../config/characters";
 
 export class MenuScene extends Phaser.Scene {
   private portraits: Phaser.GameObjects.Image[] = [];
@@ -220,6 +220,9 @@ export class MenuScene extends Phaser.Scene {
   }
   update(time: number) {
     if (this.reducedMotion) return;
-    this.portraits.forEach((portrait, index) => portrait.setFrame((Math.floor(time / 90) + index * 13) % 64));
+    this.portraits.forEach((portrait, index) => {
+      const character = characters[index];
+      portrait.setFrame((Math.floor(time / (character.idleFrameMs ?? 90)) + index * 13) % characterFrameCount(character));
+    });
   }
 }
