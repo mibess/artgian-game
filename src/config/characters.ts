@@ -9,7 +9,7 @@ export const margo: Character = {
   id: "margo", name: "Margô", originX: 0.5, originY: 238 / 256,
   animationScale: { idle: 1, walk: 1, jump: 1 },
   jumpFrames: { start: 6, apex: 23, fallEnd: 34 },
-  frameCount: 60, idleFrameMs: 1000 / 24,
+  frameCount: 60, idleFrameMs: 1000 / 12,
 };
 export const characters: Character[] = [
   {

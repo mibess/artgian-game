@@ -55,7 +55,8 @@ export class BootScene extends Phaser.Scene {
       for (const action of ["idle", "walk", "jump"]) {
         this.load.spritesheet(character.id + "-" + action,
           characterSheetPath(character, action) +
-            (character.id === "giulinha" ? "?v=20260908-grid64" : ""),
+            (character.id === "giulinha" ? "?v=20260908-grid64" :
+              character.id === "margo" && action === "idle" ? "?v=20260919-idle-v2" : ""),
           { frameWidth: 256, frameHeight: 256, endFrame: characterFrameCount(character) - 1 });
       }
     }
