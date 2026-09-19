@@ -18,14 +18,14 @@ def main():
     output.mkdir(exist_ok=True)
     for action in ('idle', 'walk', 'jump'):
         with Image.open(DIRECTORY / f'margo_{action}_sheet.png') as original:
-            expected = (8640, 15360) if action == 'idle' else (15360, 8640)
+            expected = (15360, 8640)
             if original.size != expected:
                 raise ValueError(f'{action}: expected source size {expected}')
             source = original.convert('RGBA')
         width, height = source.width // COLUMNS, source.height // COLUMNS
         # Sitting and walking were exported at different source scales. Keep
         # walk and jump identical; align the torso and ground, not the tail.
-        scale, anchor_x, baseline = (0.2, 550, 1459) if action == 'idle' else (0.28, 1000, 830)
+        scale, anchor_x, baseline = (0.30, 960, 872) if action == 'idle' else (0.28, 1000, 830)
         sheet = Image.new('RGBA', (FRAME * COLUMNS, FRAME * COLUMNS))
         for index in range(64):
             x, y = (index % COLUMNS) * width, (index // COLUMNS) * height
