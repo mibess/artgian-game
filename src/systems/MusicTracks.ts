@@ -1,4 +1,4 @@
-// Musical notes and compositions for the 3 levels of Artgian Jump
+// Musical notes and compositions for the levels of Artgian Jump
 
 export const midiToFreq = (midi: number): number =>
   midi <= 0 ? 0 : 440 * Math.pow(2, (midi - 69) / 12);
@@ -313,4 +313,5 @@ export const levelTracks: Record<string, TrackConfig> = {
   workshop: workshopTrack,
   home: homeTrack,
   studio: studioTrack,
+  garden: { ...homeTrack, bpm: 88 },
 };

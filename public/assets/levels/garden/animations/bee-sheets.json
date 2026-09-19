@@ -1,0 +1,21 @@
+{
+  "frameWidth": 128,
+  "frameHeight": 128,
+  "columns": 8,
+  "frameCount": 60,
+  "sharedSourceCrop": [
+    401,
+    0,
+    1561,
+    1016
+  ],
+  "idleFrameRate": 24,
+  "warningFrames": [
+    0,
+    15
+  ],
+  "crossingFrames": [
+    16,
+    59
+  ]
+}

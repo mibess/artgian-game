@@ -15,3 +15,7 @@ Chaleira: 2200ms idle, 700ms preparação (warn 0–24), 1500ms perigo
 Sem warn carregado, usa idle; sem animação registrada, mantém o visual antigo.
 Ao integrar sheets de outro obstáculo, conectar seu objeto visual ao mesmo
 resolvedor `hazardAnimationPose`, mantendo os efeitos e colisões próprios.
+
+Fase 4: o aspersor usa o mesmo ciclo de 4400 ms, com sheets opcionais em
+`assets/levels/garden/animations/`. A detecção acontece no Vite; arquivos ausentes
+mantêm o visual estático e o efeito provisório. Consulte o [kit da Margô](../public/assets/levels/garden/README.md).

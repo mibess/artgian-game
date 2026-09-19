@@ -1,10 +1,11 @@
 import { FLOOR, TOP, GRAVITY, JUMP, SPEED, WORLD_H, H } from "../config/gameConfig.ts";
+import { beeFlight } from "../config/garden.ts";
 import { beatState, hazardState, type Level, type HazardSpec } from "../config/levels.ts";
 
 // This is the sole gameplay authority, used for client prediction and server replay.
 // Only input commands cross the trust boundary; positions, lives and wins never do.
 export const STEP_MS = 1000 / 60;
-export const RULES_VERSION = 1;
+export const RULES_VERSION = 2;
 export type Command = { axis: -1 | 0 | 1; jump: boolean };
 export interface Simulation {
   tick: number; x: number; feet: number; vx: number; vy: number;
@@ -36,6 +37,10 @@ export function platformAt(level: Level, state: Simulation, i: number, time = st
 }
 export function hazardAt(h: HazardSpec, time: number) {
   let { x, y } = h;
+  if (h.kind === "bee") {
+    const flight = beeFlight(time, h.phase, h.x < 270);
+    return { x: flight.x, y: y + flight.offsetY, active: flight.active, warning: flight.warning };
+  }
   if (h.kind === "head") x += Math.sin(time / 950) * 175;
   if (h.kind === "arm") x += Math.sin(time / 800) * 70;
   if (h.kind === "pendant") {

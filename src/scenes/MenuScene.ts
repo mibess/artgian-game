@@ -1,3 +1,4 @@
+import { animateGardenSprite } from "../art/Garden";
 import Phaser from "phaser";
 import { restoreCompletion } from "../systems/GameSession";
 import { getLevel, levels } from "../config/levels";
@@ -34,12 +35,14 @@ export class MenuScene extends Phaser.Scene {
     text(270, 506, "ESCOLHA QUEM VAI SALTAR", 14, "#d9fff4", true)
       .setShadow(0, 2, "#031a23", 5, true, true);
     const selected = getCharacter(this.registry.get("character"));
-    const colors = [0x71e6df, 0xcbb2ff, 0xffb9d8];
+    const colors = [0x71e6df, 0xcbb2ff, 0xffb9d8, 0xffc98b];
+    const characterSpacing = 486 / characters.length;
+    const portraitScale = Math.min(1, 3 / characters.length);
     const cards = characters.map((character, index) => {
-      const x = 108 + index * 162;
+      const x = 270 + (index - (characters.length - 1) / 2) * characterSpacing;
       const root = this.add.container(x, 439);
-      const halo = this.add.ellipse(0, -62, 128, 160, colors[index], 0.12);
-      const ring = this.add.ellipse(0, 0, 110, 18, colors[index], 0.16).setStrokeStyle(2, colors[index], 0.4);
+      const halo = this.add.ellipse(0, -62, 128 * portraitScale, 160, colors[index], 0.12);
+      const ring = this.add.ellipse(0, 0, 110 * portraitScale, 18, colors[index], 0.16).setStrokeStyle(2, colors[index], 0.4);
       const portrait = this.add.image(0, 0, character.id + "-idle", 0)
         .setOrigin(character.originX, character.originY).setDisplaySize(190, 190);
       const fx = portrait.preFX?.addColorMatrix();
@@ -47,7 +50,7 @@ export class MenuScene extends Phaser.Scene {
       const pill = this.add.graphics();
       const label = text(0, 36, character.name, 20, "#fff6df", true);
       root.add([halo, ring, portrait, pill, label]);
-      const zone = this.add.zone(x, 394, 148, 220).setInteractive({ useHandCursor: true });
+      const zone = this.add.zone(x, 394, characterSpacing - 14, 220).setInteractive({ useHandCursor: true });
       return { character, root, portrait, fx, halo, ring, pill, label, zone };
     });
     const selectCharacter = (id: string, animate = true) => {
@@ -56,11 +59,11 @@ export class MenuScene extends Phaser.Scene {
       for (const card of cards) {
         const active = card.character.id === id;
         card.pill.clear().fillStyle(active ? 0xffce79 : 0x0b3540, 0.96)
-          .fillRoundedRect(-65, 20, 130, 34, 17);
+          .fillRoundedRect(-65 * portraitScale, 20, 130 * portraitScale, 34, 17);
         card.label.setText((active ? "✓ " : "") + card.character.name).setColor(active ? "#172d30" : "#869fa5");
         this.tweens.killTweensOf(card.portrait);
-        this.tweens.add({ targets: card.portrait, scaleX: (active ? 212 : 185) / 256,
-          scaleY: (active ? 212 : 185) / 256, alpha: active ? 1 : 0.72,
+        this.tweens.add({ targets: card.portrait, scaleX: (active ? 212 : 185) * portraitScale / 256,
+          scaleY: (active ? 212 : 185) * portraitScale / 256, alpha: active ? 1 : 0.72,
           duration: animate ? duration : 0, ease: "Back.Out" });
         card.halo.setAlpha(active ? 1 : 0);
         card.ring.setAlpha(active ? 1 : 0.2);
@@ -83,21 +86,23 @@ export class MenuScene extends Phaser.Scene {
     cards.forEach(card => card.zone.on("pointerdown", () => selectCharacter(card.character.id)));
     selectCharacter(selected.id, false);
     text(35, 538, "ESCOLHA SEU MUNDO", 15, "#a8d9d9", true).setOrigin(0, 0.5);
-    text(504, 538, "3 FASES", 14, "#a8d9d9", true).setOrigin(1, 0.5);
+    text(504, 538, `${levels.length} FASES`, 14, "#a8d9d9", true).setOrigin(1, 0.5);
+    const stageWidth = 112, stageGap = 12;
     const stageCards = levels.map((level, index) => {
-      const x = 108 + index * 162, root = this.add.container(x, 651);
+      const x = 270 + (index - (levels.length - 1) / 2) * (stageWidth + stageGap), root = this.add.container(x, 651);
       const border = this.add.graphics();
-      const preview = this.add.image(0, -18, level.background).setDisplaySize(138, 96);
+      const preview = this.add.image(0, -18, level.background).setDisplaySize(stageWidth - 10, 96);
       const previewFx = preview.preFX?.addColorMatrix();
-      const tint = this.add.rectangle(0, -18, 138, 96, 0x061e29, 0.23);
-      const scale = Math.min(103 / level.productWidth, 65 / level.productHeight);
-      const product = this.add.image(0, -16, level.product).setDisplaySize(level.productWidth * scale, level.productHeight * scale);
+      const tint = this.add.rectangle(0, -18, stageWidth - 10, 96, 0x061e29, 0.23);
+      const scale = Math.min(86 / level.productWidth, 65 / level.productHeight);
+      const product = this.add.sprite(0, -16, level.product).setDisplaySize(level.productWidth * scale, level.productHeight * scale);
+      if (level.id === "garden") animateGardenSprite(product, "bowl");
       const productFx = product.preFX?.addColorMatrix();
-      const label = text(0, 53, level.name, 20, "#f3f9f6", true);
-      const badge = text(53, -65, "✓", 17, "#132d35", true);
-      const badgeBg = this.add.circle(53, -65, 12, 0xffce79);
+      const label = text(0, 53, level.name, 17, "#f3f9f6", true);
+      const badge = text(38, -65, "✓", 17, "#132d35", true);
+      const badgeBg = this.add.circle(38, -65, 12, 0xffce79);
       root.add([border, preview, tint, product, label, badgeBg, badge]);
-      const zone = this.add.zone(x, 651, 148, 166).setInteractive({ useHandCursor: true });
+      const zone = this.add.zone(x, 651, stageWidth, 166).setInteractive({ useHandCursor: true });
       return { level, root, border, preview, previewFx, tint, product, productFx, label, badge, badgeBg, zone };
     });
     const productLabel = text(270, 754, "", 16, "#ffdc9e", true);
@@ -116,9 +121,9 @@ export class MenuScene extends Phaser.Scene {
       for (const card of stageCards) {
         const active = card.level.id === level.id;
         card.border.clear().fillStyle(active ? 0x16454c : 0x091b22)
-          .fillRoundedRect(-74, -83, 148, 166, 18)
+          .fillRoundedRect(-stageWidth / 2, -83, stageWidth, 166, 16)
           .lineStyle(active ? 3 : 1, active ? 0xffce79 : 0x223c44)
-          .strokeRoundedRect(-74, -83, 148, 166, 18);
+          .strokeRoundedRect(-stageWidth / 2, -83, stageWidth, 166, 16);
         card.badge.setVisible(active); card.badgeBg.setVisible(active);
         card.label.setColor(active ? "#f3f9f6" : "#7c979e");
         if (card.previewFx) {

@@ -1,6 +1,6 @@
 # Artgian Jump
 
-Jogo de plataforma vertical em Phaser 3, TypeScript e Vite, com backend Worker e D1 para recompensas. Resolução lógica 540 × 960 (9:16), redimensionada proporcionalmente. Três fases com 49 plataformas, 25 filamentos e 3 vidas.
+Jogo de plataforma vertical em Phaser 3, TypeScript e Vite, com backend Worker e D1 para recompensas. Resolução lógica 540 × 960 (9:16), redimensionada proporcionalmente. Quatro fases com 49 plataformas, 25 filamentos e 3 vidas.
 
 ## Executar
 
@@ -39,10 +39,12 @@ A composição foi refinada em cinco rodadas de capturas: proporções, ilumina�
 
 ## Validação
 
-TypeScript, build de produção e testes automatizados de física, percursos completos nas três fases, assets, checkpoints e integração de cupons. Os testes de backend usam SQLite e respostas simuladas da loja, sem emitir cupons reais.
+TypeScript, build de produção e testes automatizados de física, percursos completos nas quatro fases, assets, checkpoints e integração de cupons. Os testes de backend usam SQLite e respostas simuladas da loja, sem emitir cupons reais.
 
 Em desenvolvimento, abra `/?qa=1`: P alterna um percurso automático de teste que envia apenas movimento e salto, com pausas no checkpoint central e na penúltima plataforma. K captura o framebuffer do jogo. Esse módulo é removido do build de produção. Ele não altera vidas, não teletransporta o jogador e não desativa obstáculos.
 
 O áudio continua sintetizado. A próxima impressão reinicia esta fase. Partidas anônimas têm validação por reprodução de comandos no servidor e recompensa persistida por conclusão. Ao recarregar, o jogo abre a seleção inicial; o cupom salvo pode ser consultado pelo botão “Ver meu último cupom”. A partida em andamento não é retomada após recarga. Aparelhos físicos ainda podem exigir ajuste fino de desempenho e controles.
 
 Consulte [a integração de cupons](docs/cupons-jogo.md) para sessões anônimas, persistência, repetição de chamadas e configuração de produção. O jogo precisa ser publicado como Worker com D1, e `COUPON_GAME_API_KEY` deve existir somente no ambiente secreto dos servidores do jogo e da loja.
+
+A fase 4, **Quintal da Margô — A hora dourada**, usa assets individuais com fundo verde, removido apenas em memória. Originais e guia: [kit da Margô](public/assets/levels/garden/README.md).

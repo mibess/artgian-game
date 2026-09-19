@@ -1,3 +1,4 @@
+import { gardenEnvironment } from "./Garden";
 import Phaser from "phaser";
 import { H, W } from "../config/gameConfig";
 import { environments, ENVIRONMENT_SCROLL, ZONE_HEIGHT, ZONE_OVERLAP, zoneY, sceneryY,
@@ -32,6 +33,7 @@ export function prepareEnvironments(scene: Phaser.Scene) {
 }
 
 export function environment(scene: Phaser.Scene, id: string, reducedMotion: boolean) {
+  if (id === "garden") { gardenEnvironment(scene, reducedMotion); return; }
   // Three distinct upright spaces, assembled from roof to floor. No repetition.
   for (const [index, zone] of zones.entries())
     scene.add.image(W / 2, zoneY[zone], environmentKey(id, zone) + "-strip")

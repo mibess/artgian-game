@@ -17,6 +17,7 @@ import { GameSession } from "../systems/GameSession";
 import { initialState, stepSimulation, platformAt, STEP_MS, type Simulation } from "../shared/simulation";
 import { hazardAnimationPose } from "../config/hazardAnimations";
 import { refreshCanvasTextures } from "../art/runtimeTextures";
+import { beeFlight, beeAnimationPose } from "../config/garden";
 interface Hazard {
   obj: Phaser.GameObjects.Rectangle;
   kind: HazardKind;
@@ -54,6 +55,7 @@ export class GameScene extends Phaser.Scene {
   invulnerable = 0;
   locked = false;
   paused = false;
+  private readonly reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   support?: Platform;
   highestCameraY = WORLD_H - H;
   constructor() {
@@ -188,6 +190,11 @@ export class GameScene extends Phaser.Scene {
     if (this.locked) return;
     this.paused = !this.paused;
     this.time.paused = this.paused;
+    for (const object of this.children.list) {
+      if (object instanceof Phaser.GameObjects.Sprite && object.anims.currentAnim) {
+        if (this.paused) object.anims.pause(); else object.anims.resume();
+      }
+    }
     this.controls.setPaused(this.paused);
     this.controls.clear();
     this.pendingJump = false;
@@ -230,14 +237,29 @@ export class GameScene extends Phaser.Scene {
   ) {
     const obj = this.add.rectangle(x, y, w, h, 0xff5362, 0);
     const art = this.add.container(x, y).setDepth(8);
-    if (["steam", "pendant", "sound", "cymbal"].includes(kind)) {
+    if (kind === "bee") {
+      const effect = this.add.graphics();
+      const animatedItem = this.add.image(0, 0, "garden-bee").setDisplaySize(64, 48);
+      const warning = this.add.text(0, -45, "!", {
+        fontFamily: "Arial", fontSize: "24px", fontStyle: "bold", color: "#fff0a6",
+        stroke: "#533322", strokeThickness: 4,
+      }).setOrigin(0.5);
+      art.add([effect, animatedItem, warning]);
+      this.hazards.push({ obj, art, kind, x, y, active: false, phase, effect, warning, animatedItem });
+      return;
+    }
+    if (["steam", "pendant", "sound", "cymbal", "sprinkler"].includes(kind)) {
       let effect: Phaser.GameObjects.Graphics | undefined;
       let warning: Phaser.GameObjects.Text | undefined;
       let animatedItem: Phaser.GameObjects.Image | undefined;
-      if (kind === "steam" || kind === "sound") {
+      if (kind === "steam" || kind === "sound" || kind === "sprinkler") {
         effect = this.add.graphics();
         art.add(effect);
-        if (kind === "steam") {
+        if (kind === "sprinkler") {
+          animatedItem = this.add.image(0, h / 2 + 40, "garden-sprinkler")
+            .setOrigin(0.5, 1).setDisplaySize(85, 62);
+          art.add(animatedItem);
+        } else if (kind === "steam") {
           // Anchor the kettle body, not the full silhouette including steam.
           animatedItem = this.add.image(0, h / 2 + 21, this.textures.exists("home-kettle-idle") ? "home-kettle-idle" : "home-kettle", 0)
             .setOrigin(0.29, 0.70).setDisplaySize(140, 140);
@@ -398,6 +420,23 @@ export class GameScene extends Phaser.Scene {
       const was = h.active;
       const pulse = hazardState(h.kind, this.elapsed, h.phase);
       h.active = pulse.active;
+      if (h.kind === "bee") {
+        const flight = beeFlight(this.elapsed, h.phase, h.x < W / 2);
+        h.obj.setPosition(flight.x, h.y + flight.offsetY);
+        h.animatedItem!.setFlipX(!flight.rightward);
+        const pose = beeAnimationPose(this.elapsed, h.phase, key => this.textures.exists(key), this.reducedMotion);
+        if (pose) h.animatedItem!.setTexture(pose.key, pose.frame).setOrigin(0.5, 0.57).setDisplaySize(80, 80);
+        h.warning!.setVisible(flight.warning);
+        h.effect!.clear();
+        if (flight.warning) {
+          const direction = flight.rightward ? 1 : -1;
+          h.effect!.lineStyle(2, 0xffe4a6, 0.6);
+          for (let offset = 40; offset < 450; offset += 24)
+            h.effect!.lineBetween(direction * offset, 0, direction * (offset + 10), 0);
+          h.effect!.fillStyle(0xffe4a6, 0.9).fillTriangle(
+            direction * 77, -7, direction * 89, 0, direction * 77, 7);
+        }
+      }
       if (h.kind === "head") h.obj.x = h.x + Math.sin(this.elapsed / 950) * 175;
       if (h.kind === "arm") h.obj.x = h.x + Math.sin(this.elapsed / 800) * 70;
       if (h.kind === "pendant") {
@@ -409,7 +448,7 @@ export class GameScene extends Phaser.Scene {
         h.obj.x = h.x + Math.sin((this.elapsed + h.phase) / 750) * 140;
         h.art.setAngle(Math.sin((this.elapsed + h.phase) / 250) * 16);
       }
-      if (h.kind === "steam" || h.kind === "sound") {
+      if (h.kind === "steam" || h.kind === "sound" || h.kind === "sprinkler") {
         const pose = hazardAnimationPose(h.kind, this.elapsed, h.phase, key => this.textures.exists(key));
         if (h.animatedItem && pose) h.animatedItem.setTexture(pose.sheet.key, pose.frame)
           .setOrigin(pose.sheet.originX, pose.sheet.originY).setDisplaySize(pose.sheet.size, pose.sheet.size);
@@ -417,9 +456,17 @@ export class GameScene extends Phaser.Scene {
         h.warning?.setVisible(pulse.warning).setAlpha(0.65 + Math.sin(this.elapsed / 70) * 0.35);
         // The warning sheet already contains the steam; keep legacy particles
         // only as fallback. Collision rectangles remain unchanged.
-        const sheetHasSteam = h.kind === "steam" && h.animatedItem && pose?.state === "warn";
+        const sheetHasSteam = (h.kind === "steam" || h.kind === "sprinkler") && h.animatedItem && pose?.state === "warn";
         if (h.active && !sheetHasSteam) {
-          if (h.kind === "steam") {
+          if (h.kind === "sprinkler") {
+            h.effect!.fillStyle(0xa9e7ff, 0.2).fillRoundedRect(-h.obj.width / 2, -h.obj.height / 2, h.obj.width, h.obj.height, 12);
+            for (let i = 0; i < 9; i++) {
+              const t = ((this.elapsed / 700 + i / 9) % 1);
+              h.effect!.fillStyle(0xc9f2ff, 0.8).fillEllipse(
+                Math.sin(i * 2.4) * h.obj.width * 0.42 * t,
+                h.obj.height / 2 - t * h.obj.height, 4, 9);
+            }
+          } else if (h.kind === "steam") {
             h.effect!.fillStyle(0xeaf1dc, 0.42).fillRoundedRect(-h.obj.width / 2, -h.obj.height / 2, h.obj.width, h.obj.height, 20);
             for (let i = 0; i < 5; i++)
               h.effect!.fillStyle(0xffffff, 0.3).fillCircle(Math.sin(this.elapsed / 170 + i) * 24,
@@ -431,7 +478,8 @@ export class GameScene extends Phaser.Scene {
           }
         }
       }
-      h.art.setPosition(h.obj.x, h.obj.y).setAlpha(["steam", "sound"].includes(h.kind) ? 1 : h.active ? 1 : 0.15);
+      h.art.setPosition(h.obj.x, h.obj.y).setAlpha(h.kind === "bee" ? pulse.warning || pulse.active ? 1 : 0.65
+        : ["steam", "sound", "sprinkler"].includes(h.kind) ? 1 : h.active ? 1 : 0.15);
       if (
         h.kind === "laser" &&
         h.active &&

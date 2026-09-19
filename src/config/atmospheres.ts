@@ -17,6 +17,14 @@ export interface Atmosphere {
 }
 
 export const atmospheres: Record<string, Atmosphere> = {
+  garden: {
+    backgroundPath: "", // Composed at boot from the separate green-screen assets.
+    shade: 0x402b48, shadeAlpha: 0.08,
+    lights: [0xffd598, 0xffb2a4], lightSize: [95, 230],
+    lightAlpha: [0.06, 0.12], lightDuration: 5000,
+    motes: [0xffecc4, 0xffce9e], moteCount: 12, moteDuration: 7000, moteRise: 45,
+    land: 0xf4ca99, jump: 0xffe1ad,
+  },
   workshop: {
     backgroundPath: "assets/levels/workshop/background.png",
     shade: 0x081d29, shadeAlpha: 0.12,

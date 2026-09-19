@@ -1,6 +1,7 @@
+import { loadGarden, prepareGarden } from "../art/Garden";
 import Phaser from "phaser";
 import { makeTextures } from "../art/textures";
-import { characters } from "../config/characters";
+import { characters, registerMargo } from "../config/characters";
 import { loadLevelAssets } from "../art/levelAssets";
 import { hazardAnimations } from "../config/hazardAnimations";
 import { atmospheres } from "../config/atmospheres";
@@ -50,6 +51,8 @@ export class BootScene extends Phaser.Scene {
     this.load.image("jump-logo", "assets/menu/artgian-jump-logo.png");
     this.load.image("filament", "assets/filament-real.png");
     this.load.image("jump-title", "assets/menu/artgian-jump.png");
+    const margoSheets = import.meta.glob("/public/assets/margo/margo_*_sheet.png", { eager: true, query: "?url", import: "default" });
+    if (["idle", "walk", "jump"].every(action => `/public/assets/margo/margo_${action}_sheet.png` in margoSheets)) registerMargo();
     for (const character of characters) {
       for (const action of ["idle", "walk", "jump"]) {
         this.load.spritesheet(character.id + "-" + action,
@@ -63,9 +66,10 @@ export class BootScene extends Phaser.Scene {
     for (const [id, environment] of Object.entries(environments))
       for (const zone of ["ground", "middle", "upper"] as EnvironmentZone[])
         this.load.image(environmentKey(id, zone), environment[zone]);
-    for (const animation of Object.values(hazardAnimations))
+    loadGarden(this);
+    for (const [kind, animation] of Object.entries(hazardAnimations))
       for (const sheet of [animation.idle, animation.warn])
-        if (sheet) this.load.spritesheet(sheet.key, sheet.path, { frameWidth: 256, frameHeight: 256 });
+        if (sheet && kind !== "sprinkler") this.load.spritesheet(sheet.key, sheet.path, { frameWidth: 256, frameHeight: 256 });
     for (const theme of ["home", "studio"]) {
       this.load.image(theme + "-background", atmospheres[theme].backgroundPath);
       this.load.image(theme + "-atlas-source", "assets/levels/" + theme + "/assets.png");
@@ -75,6 +79,7 @@ export class BootScene extends Phaser.Scene {
   create() {
     makeTextures(this);
     loadLevelAssets(this);
+    prepareGarden(this);
     prepareEnvironments(this);
     // Keep the complete loading screen visible for a fixed extra second.
     this.time.delayedCall(1000, () => this.scene.start("Menu"));

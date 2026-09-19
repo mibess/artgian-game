@@ -1,3 +1,4 @@
+import { animateGardenSprite } from "../art/Garden";
 import Phaser from "phaser";
 import type { PlatformSpec } from "../systems/LevelSystem";
 import { beatState, getLevel } from "../config/levels";
@@ -21,6 +22,7 @@ export class Platform extends Phaser.Physics.Arcade.Sprite {
     this.setDisplaySize(p.w, 44)
       .setOrigin(0.5, 13.5 / 44)
       .setDepth(5);
+    if (level.id === "garden") animateGardenSprite(this, ["temporary", "sink"].includes(p.kind) ? "cushion" : "plank");
     const b = this.body as Phaser.Physics.Arcade.Body;
     b.setSize(this.width, (this.height * 27) / 44).setOffset(0, 0);
     b.setAllowGravity(false).setImmovable(true);

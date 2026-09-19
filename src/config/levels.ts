@@ -1,7 +1,8 @@
+import { gardenCycle, beeFlight } from "./garden.ts";
 import { FLOOR, TOP } from "./gameConfig.ts";
 import { platforms as workshopPlatforms, collectibleIndices, type PlatformSpec } from "../systems/LevelSystem.ts";
 
-export type HazardKind = "laser" | "head" | "spikes" | "arm" | "steam" | "pendant" | "sound" | "cymbal";
+export type HazardKind = "laser" | "head" | "spikes" | "arm" | "steam" | "pendant" | "sound" | "cymbal" | "sprinkler" | "bee";
 export interface HazardSpec {
   kind: HazardKind; x: number; y: number; w: number; h: number; phase: number;
 }
@@ -12,9 +13,10 @@ export interface Level {
   accent: number; platforms: PlatformSpec[]; collectibles: number[]; hazards: HazardSpec[];
 }
 
-function themedPlatforms(theme: "home" | "studio"): PlatformSpec[] {
+function themedPlatforms(theme: "home" | "studio" | "garden"): PlatformSpec[] {
   const route = theme === "home"
     ? [230, 350, 245, 135, 255, 385, 285, 160]
+    : theme === "garden" ? [225, 345, 260, 140, 245, 375, 280, 155]
     : [245, 370, 280, 145, 230, 365, 255, 135];
   return [
     { x: 105, y: FLOOR, w: 240, kind: "normal", checkpoint: 0 },
@@ -23,7 +25,7 @@ function themedPlatforms(theme: "home" | "studio"): PlatformSpec[] {
       return {
         x: route[i % route.length], y: FLOOR - (i + 1) * 133,
         w: checkpoint ? 185 : i < 4 ? 160 : theme === "home" ? 142 : 150,
-        kind: checkpoint || i < 3 ? "normal" : theme === "home"
+        kind: checkpoint || i < 3 ? "normal" : theme !== "studio"
           ? i % 4 === 0 ? "sink" : i % 5 === 2 ? "horizontal" : "normal"
           : i % 8 === 3 || i % 8 === 4 ? "beat" : i % 6 === 0 ? "boost" : "normal",
         phase: (i % 2) * 1800,
@@ -78,6 +80,23 @@ export const levels: Level[] = [
     accent: 0xc2a6ef, platforms: themedPlatforms("studio"), collectibles: collectibleIndices,
     hazards: themedHazards("studio"),
   },
+  {
+    id: "garden", name: "Quintal", subtitle: "Margô · A hora dourada",
+    hint: "Espere a abelha cruzar e salte no intervalo da água.",
+    background: "garden-background", platform: "garden-plank", alternate: "garden-cushion",
+    product: "garden-bowl", productName: "Tigela da Margô", productWidth: 150, productHeight: 85,
+    accent: 0xf5bf86, platforms: themedPlatforms("garden"), collectibles: collectibleIndices,
+    hazards: [
+      ...[8, 17, 25, 33, 42].map((index, i): HazardSpec => ({
+        kind: "sprinkler", x: i % 2 ? 130 : 395, y: FLOOR - index * 133 - 65,
+        w: 90, h: 118, phase: i * 700,
+      })),
+      ...[5, 12, 19, 26, 33, 40, 46].map((index, i): HazardSpec => ({
+        kind: "bee", x: i % 2 ? 498 : 42, y: FLOOR - index * 133 - 190,
+        w: 48, h: 32, phase: i * 650,
+      })),
+    ],
+  },
 ];
 export function getLevel(id: unknown): Level {
   return levels.find((level) => level.id === id) ?? levels[0];
@@ -87,6 +106,15 @@ export function beatState(time: number, phase: number) {
   return { solid: position < 2600, warning: position >= 2150 && position < 2600 };
 }
 export function hazardState(kind: HazardKind, time: number, phase: number) {
+  if (kind === "bee") {
+    const { active, warning } = beeFlight(time, phase, true);
+    return { active, warning };
+  }
+  if (kind === "sprinkler") {
+    const position = (time + phase) % (gardenCycle.idleMs + gardenCycle.warningMs + gardenCycle.activeMs);
+    return { active: position >= gardenCycle.idleMs + gardenCycle.warningMs,
+      warning: position >= gardenCycle.idleMs && position < gardenCycle.idleMs + gardenCycle.warningMs };
+  }
   const position = (time + phase) % (kind === "steam" ? 4400 : kind === "sound" ? 3000 : 3400);
   if (kind === "steam") return { active: position >= 2900, warning: position >= 2200 && position < 2900 };
   if (kind === "sound") return { active: position >= 2200, warning: position >= 1600 && position < 2200 };

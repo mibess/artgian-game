@@ -1,3 +1,4 @@
+import { gardenCycle, gardenSheet } from "./garden.ts";
 import type { HazardKind } from "./levels.ts";
 
 export interface HazardSheet {
@@ -10,6 +11,11 @@ export interface HazardAnimation {
 }
 // Register only supplied sheets. Missing entries keep their existing artwork.
 export const hazardAnimations: Partial<Record<HazardKind, HazardAnimation>> = {
+  sprinkler: {
+    idle: { key: "garden-sprinkler-idle", path: gardenSheet("sprinkler"), originX: 0.5, originY: 0.85, size: 160 },
+    warn: { key: "garden-sprinkler-warn", path: gardenSheet("sprinkler", "warn"), originX: 0.5, originY: 0.85, size: 160 },
+    ...gardenCycle,
+  },
   steam: {
     idle: { key: "home-kettle-idle", path: "assets/levels/home/chaleira_idle_sheet.png", originX: 0.29, originY: 0.70, size: 140 },
     warn: { key: "home-kettle-warn", path: "assets/levels/home/chaleira_warn_sheet.png", originX: 0.48, originY: 0.70, size: 154 },

@@ -22,8 +22,8 @@ for (const level of levels) {
   });
 }
 test("Themes have independent products, artwork and challenge sets", () => {
-  assert.equal(new Set(levels.map(l => l.product)).size, 3);
-  assert.equal(new Set(levels.map(l => l.background)).size, 3);
+  assert.equal(new Set(levels.map(l => l.product)).size, levels.length);
+  assert.equal(new Set(levels.map(l => l.background)).size, levels.length);
   assert.ok(getLevel("home").platforms.some(p => p.kind === "sink"));
   assert.ok(getLevel("studio").platforms.some(p => p.kind === "beat"));
   assert.deepEqual(new Set(getLevel("home").hazards.map(h => h.kind)), new Set(["steam", "pendant"]));

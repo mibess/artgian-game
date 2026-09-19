@@ -1,3 +1,4 @@
+import { animateGardenSprite } from "../art/Garden";
 import Phaser from "phaser";
 import { getLevel } from "../config/levels";
 import { couponReward } from "./CouponReward";
@@ -23,8 +24,9 @@ export function victory(s: Phaser.Scene, data: { count: number; time: number; li
   panel(36, 285, 468, 225, 0x11363e, 0xb89054);
   s.add.ellipse(270, 397, 260, 38, 0x000c13, 0.5);
   s.add.circle(270, 365, 85, 0xffcd76, 0.07);
-  const product = s.add.image(270, 367, level.product);
+  const product = s.add.sprite(270, 367, level.product);
   product.setScale(Math.min(250 / product.width, 145 / product.height));
+  if (level.id === "garden") animateGardenSprite(product, "bowl");
   text(270, 462, level.productName, 24, "#fff4dd", true);
   text(270, 489, "MAIS UMA CRIAÇÃO GANHOU FORMA", 14, "#b3d6d4", true);
   const seconds = Math.max(0, Math.floor(data.time / 1000));
