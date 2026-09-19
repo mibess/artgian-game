@@ -35,7 +35,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       .image(x, y + 40.5, this.visualTexture, this.visualFrame)
       // Anchor each character's sheets on the physics body's feet.
       .setOrigin(this.character.originX, this.character.originY)
-      .setDisplaySize(165.6, 165.6)
+      .setDisplaySize(165.6 * this.character.animationScale.idle, 165.6 * this.character.animationScale.idle)
       .setDepth(10);
     const b = this.body as Phaser.Physics.Arcade.Body;
     b.setSize(44, 112).setOffset(28, 28);
