@@ -19,6 +19,16 @@ npm test
 
 ## Implementação
 
+### Instalar na tela inicial
+
+O botão opcional “Adicionar à tela inicial” aparece no menu em celulares e em navegadores com instalação disponível. No Android, usa a confirmação nativa quando o navegador fornece `beforeinstallprompt`; nos demais casos, mostra os passos pelo menu do navegador. No iPhone/iPad, orienta a usar Compartilhar → Adicionar à Tela de Início. Em navegadores internos de aplicativos, orienta a abrir no Safari/Chrome. Não abre janelas automaticamente nem aparece durante a partida ou ao executar em modo standalone.
+
+`public/manifest.webmanifest` define o nome, os ícones e a abertura como app. A instalação em produção requer **HTTPS**; HTTP no IP da rede local não serve para validar a instalação Android. O jogo continua dependendo de internet, inclusive para validar partidas e emitir cupons. Não há service worker nem cache offline. A instalação real deve ser validada no Chrome Android e Safari iOS após publicar.
+
+Os ícones PNG são renderizados de `public/icons/app-icon.svg` (arte vetorial, com conteúdo dentro da área segura para máscaras do Android).
+
+### Organização
+
 - `entities/`: personagem, física responsiva, coyote time de 110 ms, buffer de 130 ms, plataformas e filamentos.
 - `systems/LevelSystem.ts`: configuração da fase e posições; tipos normal, pequena, horizontal, vertical, temporária e impulso.
 - `systems/PrintingProgressSystem.ts`: peça revelada por máscara, cabeçote e luz; progresso baseado na maior altura alcançada, preservado após quedas.
