@@ -3,7 +3,7 @@ import { W, H, WORLD_H, FLOOR, TOP } from "../config/gameConfig";
 import { Player } from "../entities/Player";
 import { Platform } from "../entities/Platform";
 import { Collectible } from "../entities/Collectible";
-import { getLevel, hazardState, beatState, type HazardKind } from "../config/levels";
+import { getLevel, hazardState, beatState, dripCycle, dripFall, nozzleX, type HazardKind } from "../config/levels";
 import { CheckpointSystem } from "../systems/CheckpointSystem";
 import { PrintingProgressSystem } from "../systems/PrintingProgressSystem";
 import { AudioSystem } from "../systems/AudioSystem";
@@ -149,6 +149,9 @@ export class GameScene extends Phaser.Scene {
         this.add.text(p.x, p.y + 26, p.kind === "sink" ? "CEDE AO PESO" : "NO RITMO", {
           fontFamily: "Arial", fontSize: "12px", color: p.kind === "sink" ? "#c5e5bc" : "#d7bbff",
         }).setOrigin(0.5).setDepth(6);
+      if (p.kind === "shuttle") a.setData("label", this.add.text(p.x, p.y + 26, "⇆  DESLIZA", {
+        fontFamily: "Arial", fontSize: "12px", fontStyle: "bold", color: "#ffc58a",
+      }).setOrigin(0.5).setDepth(6));
       return a;
     });
     this.player = new Player(this, 105, FLOOR - 57);
@@ -285,6 +288,39 @@ export class GameScene extends Phaser.Scene {
   ) {
     const obj = this.add.rectangle(x, y, w, h, 0xff5362, 0);
     const art = this.add.container(x, y).setDepth(8);
+    if (kind === "nozzle") {
+      // A rail spans the lane so the sweep reads before the head arrives.
+      this.add.rectangle(W / 2, y - 30, W, 6, 0x24333d).setDepth(4);
+      this.add.rectangle(W / 2, y - 32, W, 1.5, 0x7b93a0, 0.7).setDepth(4);
+      const heat = this.add.image(0, 22, "glow").setTint(0xff7a2f).setBlendMode(Phaser.BlendModes.ADD)
+        .setDisplaySize(90, 60).setAlpha(0.7);
+      const head = this.add.image(0, -4, "bed-nozzle").setDisplaySize(78, 78);
+      art.add([heat, head]);
+      this.hazards.push({ obj, art, kind, x, y, active: true, phase, animatedItem: head });
+      return;
+    }
+    if (kind === "drip") {
+      // A small emitter at the top of the column; the drop forms under it, then falls.
+      this.add.image(x, y - 34, "bed-nozzle").setDisplaySize(40, 40).setDepth(7).setAlpha(0.9);
+      const glow = this.add.image(0, 0, "glow").setTint(0xffa040).setBlendMode(Phaser.BlendModes.ADD)
+        .setDisplaySize(60, 60).setAlpha(0.6);
+      const drop = this.add.image(0, 0, "bed-drip").setDisplaySize(25, 48);
+      const warning = this.add.text(22, -26, "!", { fontFamily: "Arial", fontSize: "22px", fontStyle: "bold",
+        color: "#ffcf78", stroke: "#3a1d0f", strokeThickness: 4 }).setOrigin(0.5);
+      art.add([glow, drop, warning]);
+      this.hazards.push({ obj, art, kind, x, y, active: false, phase, warning, animatedItem: drop });
+      return;
+    }
+    if (kind === "fan") {
+      obj.setPosition(x, y);
+      const effect = this.add.graphics().setDepth(7);
+      const blades = this.add.image(0, 0, "bed-fan").setDisplaySize(84, 84);
+      const warning = this.add.text(x < W / 2 ? 40 : -40, -46, "!", { fontFamily: "Arial", fontSize: "22px",
+        fontStyle: "bold", color: "#9fe8ff", stroke: "#0b2a32", strokeThickness: 4 }).setOrigin(0.5);
+      art.add([blades, warning]);
+      this.hazards.push({ obj, art, kind, x, y, active: false, phase, effect, warning, animatedItem: blades });
+      return;
+    }
     if (kind === "bee") {
       const effect = this.add.graphics();
       const animatedItem = this.add.image(0, 0, "garden-bee").setDisplaySize(64, 48);
@@ -478,7 +514,8 @@ export class GameScene extends Phaser.Scene {
       const beforeLanding = this.simulation.lastLanding;
       const beforeYVelocity = this.simulation.vy;
       const beforeSupport = this.simulation.support;
-      const command = { axis, jump: this.pendingJump };
+      // Dev QA can replay a verified route command-by-command (one per fixed step).
+      const command = this.qa?.routeCommand() ?? { axis, jump: this.pendingJump };
       this.pendingJump = false;
       stepSimulation(this.simulation, this.level, command);
       this.gameSession?.record(command);
@@ -528,6 +565,7 @@ export class GameScene extends Phaser.Scene {
       const age = sim.activated[i] < 0 ? -1 : this.elapsed - sim.activated[i];
       const warning = p.spec.kind === "beat" ? beatState(this.elapsed, p.spec.phase ?? 0).warning :
         p.spec.kind === "temporary" && age >= 0 && age < 1700;
+      (p.getData("label") as Phaser.GameObjects.Text | undefined)?.setX(at.x);
       p.setPosition(at.x, at.y).setVisible(true)
         .setAlpha(at.solid ? warning ? 0.65 + Math.sin(this.elapsed / 70) * 0.25 : 1 : 0.16);
       if (p.spec.kind === "beat") p.setTint(warning ? 0xffcd79 : at.solid ? 0xffffff : 0x77628e);
@@ -580,6 +618,35 @@ export class GameScene extends Phaser.Scene {
             direction * 77, -7, direction * 89, 0, direction * 77, 7);
         }
       }
+      if (h.kind === "nozzle") {
+        h.obj.x = nozzleX(this.elapsed, h.phase);
+        h.art.setAngle(Math.cos((this.elapsed + h.phase) / 650) * -6);
+      }
+      if (h.kind === "drip") {
+        const fall = dripFall(this.elapsed, h.phase);
+        h.obj.y = h.y + fall.offsetY;
+        // Forming: the drop swells under the emitter; resting: out of play.
+        const cycle = dripCycle.formingMs + dripCycle.fallingMs + dripCycle.restMs;
+        const grow = fall.active ? 1 : fall.resting ? 0 : Math.min(1, ((this.elapsed + h.phase) % cycle) / dripCycle.formingMs);
+        h.art.setVisible(grow > 0).setScale(0.35 + grow * 0.65);
+        h.warning!.setVisible(fall.warning).setAlpha(0.65 + Math.sin(this.elapsed / 70) * 0.35);
+      }
+      if (h.kind === "fan") {
+        const spin = pulse.active ? 0.9 : pulse.warning ? 0.35 : 0.06;
+        h.animatedItem!.setAngle(h.animatedItem!.angle + spin * delta);
+        h.warning!.setVisible(pulse.warning).setAlpha(0.65 + Math.sin(this.elapsed / 70) * 0.35);
+        // Wind streaks across the band show its reach and direction.
+        h.effect!.clear();
+        if (pulse.active || pulse.warning) {
+          const direction = h.x < W / 2 ? 1 : -1, alpha = pulse.active ? 0.5 : 0.18;
+          for (let i = 0; i < 9; i++) {
+            const lane = h.y - 60 + (i * 37) % 120;
+            const travel = ((this.elapsed * (pulse.active ? 0.6 : 0.25) + i * 97) % (W + 120)) - 60;
+            const start = direction > 0 ? travel : W - travel;
+            h.effect!.lineStyle(2, 0xbfefff, alpha).lineBetween(start, lane, start + direction * 46, lane);
+          }
+        }
+      }
       if (h.kind === "head") h.obj.x = h.x + Math.sin(this.elapsed / 950) * 175;
       if (h.kind === "arm") h.obj.x = h.x + Math.sin(this.elapsed / 800) * 70;
       if (h.kind === "pendant") {
@@ -622,7 +689,7 @@ export class GameScene extends Phaser.Scene {
         }
       }
       h.art.setPosition(h.obj.x, h.obj.y).setAlpha(h.kind === "bee" ? pulse.warning || pulse.active ? 1 : 0.65
-        : ["steam", "sound", "sprinkler"].includes(h.kind) ? 1 : h.active ? 1 : 0.15);
+        : ["steam", "sound", "sprinkler", "nozzle", "drip", "fan"].includes(h.kind) ? 1 : h.active ? 1 : 0.15);
       if (
         h.kind === "laser" &&
         h.active &&

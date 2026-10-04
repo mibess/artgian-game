@@ -1,8 +1,9 @@
 import { gardenCycle, beeFlight } from "./garden.ts";
-import { FLOOR, TOP } from "./gameConfig.ts";
-import { platforms as workshopPlatforms, collectibleIndices, type PlatformSpec } from "../systems/LevelSystem.ts";
+import { FLOOR, TOP, W } from "./gameConfig.ts";
+import { platforms as workshopPlatforms, collectibleIndices, type PlatformKind, type PlatformSpec } from "../systems/LevelSystem.ts";
 
-export type HazardKind = "laser" | "head" | "spikes" | "arm" | "steam" | "pendant" | "sound" | "cymbal" | "sprinkler" | "bee";
+export type HazardKind = "laser" | "head" | "spikes" | "arm" | "steam" | "pendant" | "sound" | "cymbal" | "sprinkler" | "bee"
+  | "nozzle" | "drip" | "fan";
 export interface HazardSpec {
   kind: HazardKind; x: number; y: number; w: number; h: number; phase: number;
 }
@@ -35,6 +36,40 @@ function themedPlatforms(theme: "home" | "studio" | "garden"): PlatformSpec[] {
     { x: 205, y: TOP, w: 220, kind: "normal" },
   ];
 }
+
+// Print bed: every platform type, with fast shuttles that track the bed's Y axis.
+function bedPlatforms(): PlatformSpec[] {
+  const route = [215, 330, 250, 175, 290, 360, 240, 185];
+  const kinds: PlatformKind[] = ["shuttle", "normal", "beat", "temporary", "vertical", "sink"];
+  return [
+    { x: 105, y: FLOOR, w: 240, kind: "normal", checkpoint: 0 },
+    ...Array.from({ length: 47 }, (_, i): PlatformSpec => {
+      const checkpoint = i % 7 === 6;
+      return {
+        x: route[i % route.length], y: FLOOR - (i + 1) * 133,
+        w: checkpoint ? 185 : i < 4 ? 160 : 140,
+        kind: checkpoint || i < 3 ? "normal" : i === 22 || i === 37 ? "boost" : kinds[i % kinds.length],
+        phase: (i % 3) * 1200,
+        ...(checkpoint ? { checkpoint: Math.floor(i / 7) + 1 } : {}),
+      };
+    }),
+    { x: 205, y: TOP, w: 220, kind: "normal" },
+  ];
+}
+/** Platform top at a route index, for placing hazards relative to the climb. */
+const rung = (index: number) => FLOOR - index * 133;
+// Sweeping print heads sit between two rungs, clear of anyone standing on either
+// (and away from vertical platforms, whose bobbing would reach the lane).
+const bedHazards: HazardSpec[] = [
+  ...[3, 6, 9, 13, 15, 19, 22, 25, 27, 31, 34, 37, 39, 43, 45].map((index, i): HazardSpec => ({
+    kind: "nozzle", x: 270, y: rung(index) - 102, w: 66, h: 34, phase: i * 1700 })),
+  // Drops fall onto the landing below (timing), never across a checkpoint.
+  ...[[5, 360], [8, 185], [11, 240], [14, 240], [17, 215], [20, 170], [23, 240], [26, 330],
+    [29, 290], [32, 130], [35, 130], [38, 360], [41, 210], [44, 175], [46, 360]].map(([index, x], i): HazardSpec => ({
+    kind: "drip", x, y: rung(index) - 420, w: 26, h: 36, phase: i * 650 })),
+  ...[4, 10, 16, 23, 30, 36, 43].map((index, i): HazardSpec => ({
+    kind: "fan", x: i % 2 ? 512 : 28, y: rung(index) - 60, w: W, h: 150, phase: i * 1100 })),
+];
 
 const themedHazards = (theme: "home" | "studio"): HazardSpec[] =>
   [8, 17, 25, 33, 42].flatMap((index, i) => {
@@ -97,6 +132,14 @@ export const levels: Level[] = [
       })),
     ],
   },
+  {
+    id: "bed", name: "Mesa", subtitle: "Dentro da impressora",
+    hint: "O bico varre a mesa, gotas quentes caem e a ventoinha empurra. Observe o ritmo antes de saltar.",
+    background: "bed-background", platform: "bed-plate", alternate: "bed-support",
+    product: "bed-product", productName: "Foguete", productWidth: 92, productHeight: 166,
+    accent: 0xff9a52, platforms: bedPlatforms(), collectibles: collectibleIndices,
+    hazards: bedHazards,
+  },
 ];
 export function getLevel(id: unknown): Level {
   return levels.find((level) => level.id === id) ?? levels[0];
@@ -105,7 +148,25 @@ export function beatState(time: number, phase: number) {
   const position = (time + phase) % 3600;
   return { solid: position < 2600, warning: position >= 2150 && position < 2600 };
 }
+export const dripCycle = { formingMs: 1300, fallingMs: 1000, restMs: 900, distance: 420 };
+export const fanCycle = { idleMs: 1800, warningMs: 800, activeMs: 1600, push: 190 };
+/** Print-head sweep: faster than walking, so jumps across its lane need timing. */
+export const nozzleX = (time: number, phase: number) => 270 + Math.sin((time + phase) / 650) * 215;
+/** Falling drop: forms (warning), falls with gravity (active), then rests out of play. */
+export function dripFall(time: number, phase: number) {
+  const position = (time + phase) % (dripCycle.formingMs + dripCycle.fallingMs + dripCycle.restMs);
+  const falling = position >= dripCycle.formingMs && position < dripCycle.formingMs + dripCycle.fallingMs;
+  const t = falling ? (position - dripCycle.formingMs) / dripCycle.fallingMs : 0;
+  return { active: falling, warning: position < dripCycle.formingMs && position > dripCycle.formingMs * 0.35,
+    offsetY: falling ? t * t * dripCycle.distance : 0, resting: !falling && position >= dripCycle.formingMs };
+}
 export function hazardState(kind: HazardKind, time: number, phase: number) {
+  if (kind === "drip") { const { active, warning } = dripFall(time, phase); return { active, warning }; }
+  if (kind === "fan") {
+    const position = (time + phase) % (fanCycle.idleMs + fanCycle.warningMs + fanCycle.activeMs);
+    return { active: position >= fanCycle.idleMs + fanCycle.warningMs,
+      warning: position >= fanCycle.idleMs && position < fanCycle.idleMs + fanCycle.warningMs };
+  }
   if (kind === "bee") {
     const { active, warning } = beeFlight(time, phase, true);
     return { active, warning };

@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import type { GameScene } from "../scenes/GameScene";
+import type { Command } from "../shared/simulation";
 /** Local-only traversal harness. Uses normal movement/jump inputs and real collisions;
  * never disables hazards, changes lives, teleports, or grants collectibles. P toggles it. */
 export class VisualQA {
@@ -10,11 +11,23 @@ export class VisualQA {
   lastLanded = 0;
   stopAt = 14;
   output: HTMLOutputElement;
+  private route?: Command[];
+  private routeIndex = 0;
   constructor(private scene: GameScene) {
     this.output = document.createElement("output");
     this.output.id = "qa-status";
     this.output.style.cssText = "position:fixed;left:-10000px;top:0";
     document.body.append(this.output);
+    // R replays the test planner's winning route through the real game loop,
+    // so the browser, the server replay and the tests exercise the same inputs.
+    scene.input.keyboard!.on("keydown-R", () => {
+      // Hazards are time-based: the route is only valid from tick 0 (press during the intro).
+      if (this.route || scene.simulation.tick > 0) return;
+      void import("../../tests/playthrough").then(({ playthrough }) => {
+        this.route = playthrough(scene.level);
+        this.routeIndex = 0;
+      });
+    });
     scene.input.keyboard!.on("keydown-P", () => {
       this.running = !this.running;
       if (this.lastLanded >= 14) this.stopAt = 26;
@@ -39,6 +52,11 @@ export class VisualQA {
       this.output.remove();
       document.querySelector("#qa-capture")?.remove();
     });
+  }
+  routeCommand(): Command | undefined {
+    if (!this.route) return undefined;
+    // The planner starts from tick 0 with ten idle steps; idle until aligned.
+    return this.route[this.routeIndex++] ?? { axis: 0, jump: false };
   }
   landed(index: number) {
     this.lastLanded = index;

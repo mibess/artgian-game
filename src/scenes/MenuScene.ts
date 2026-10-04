@@ -129,25 +129,28 @@ export class MenuScene extends Phaser.Scene {
         ? "🏆 Mestre impressor! Você conquistou todas as estrelas."
         : `🏆 Troféu de mestre impressor: conquiste as ${starsTotal} estrelas (faltam ${starsTotal - starsEarned}).`));
     }
-    const stageWidth = 112, stageGap = 12;
+    // Cards shrink to fit every level inside the 492 px row (5 levels: 92 px).
+    const stageGap = levels.length > 4 ? 8 : 12;
+    const stageWidth = Math.min(112, Math.floor((492 - stageGap * (levels.length - 1)) / levels.length));
+    const edge = stageWidth / 2;
     const stageCards = levels.map((level, index) => {
       const x = 270 + (index - (levels.length - 1) / 2) * (stageWidth + stageGap), root = this.add.container(x, 651);
       const border = this.add.graphics();
       const preview = this.add.image(0, -18, level.background).setDisplaySize(stageWidth - 10, 96);
       const previewFx = preview.preFX?.addColorMatrix();
       const tint = this.add.rectangle(0, -18, stageWidth - 10, 96, 0x061e29, 0.23);
-      const scale = Math.min(86 / level.productWidth, 65 / level.productHeight);
+      const scale = Math.min((stageWidth - 26) / level.productWidth, 65 / level.productHeight);
       const product = this.add.sprite(0, -16, level.product).setDisplaySize(level.productWidth * scale, level.productHeight * scale);
       if (level.id === "garden") animateGardenSprite(product, "bowl");
       const productFx = product.preFX?.addColorMatrix();
       const label = text(0, 47, level.name, 17, "#f3f9f6", true);
       const stars = [0, 1, 2].map(i => this.add.image((i - 1) * 20, 69, hasStar(records[level.id], i) ? "star" : "star-empty")
         .setDisplaySize(18, 18));
-      const badge = text(38, -65, "✓", 17, "#132d35", true);
-      const badgeBg = this.add.circle(38, -65, 12, 0xffce79);
+      const badge = text(edge - 18, -65, "✓", 17, "#132d35", true);
+      const badgeBg = this.add.circle(edge - 18, -65, 12, 0xffce79);
       const fresh = records[level.id] ? [] : [
-        this.add.graphics().fillStyle(0x81f1ce).fillRoundedRect(-50, -77, 46, 20, 10),
-        text(-27, -67, "NOVO", 11, "#0b2a32", true),
+        this.add.graphics().fillStyle(0x81f1ce).fillRoundedRect(-edge + 5, -77, 42, 19, 9.5),
+        text(-edge + 26, -67.5, "NOVO", 10, "#0b2a32", true),
       ];
       root.add([border, preview, tint, product, label, ...stars, badgeBg, badge, ...fresh]);
       const zone = this.add.zone(x, 651, stageWidth, 166).setInteractive({ useHandCursor: true });

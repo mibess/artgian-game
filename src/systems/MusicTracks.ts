@@ -314,4 +314,6 @@ export const levelTracks: Record<string, TrackConfig> = {
   home: homeTrack,
   studio: studioTrack,
   garden: { ...homeTrack, bpm: 88 },
+  // The print bed runs the workshop groove faster: the most urgent climb.
+  bed: { ...workshopTrack, bpm: 142 },
 };

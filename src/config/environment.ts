@@ -31,6 +31,12 @@ export const environments: Record<string, Environment> = {
     upper: "assets/levels/home/environment-upper.png",
     props: ["home-product", "home-lamp", "home-lamp"],
   },
+  bed: {
+    ground: "assets/levels/bed/environment-ground.png",
+    middle: "assets/levels/bed/environment-middle.png",
+    upper: "assets/levels/bed/environment-upper.png",
+    props: ["bed-scraper", "spool", "bed-fan"],
+  },
   studio: {
     ground: "assets/levels/studio/background.png",
     middle: "assets/levels/studio/environment-middle.png",

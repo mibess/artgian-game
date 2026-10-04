@@ -1,6 +1,6 @@
 import { FLOOR, TOP } from "../config/gameConfig.ts";
 export type PlatformKind =
-  "normal" | "small" | "horizontal" | "vertical" | "temporary" | "boost" | "sink" | "beat";
+  "normal" | "small" | "horizontal" | "vertical" | "temporary" | "boost" | "sink" | "beat" | "shuttle";
 export interface PlatformSpec {
   x: number;
   y: number;
