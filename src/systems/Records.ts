@@ -97,3 +97,21 @@ export function formatTime(ms: number) {
   const seconds = Math.max(0, Math.floor(ms / 1000));
   return String(Math.floor(seconds / 60)).padStart(2, "0") + ":" + String(seconds % 60).padStart(2, "0");
 }
+
+// Levels cleared by each character: a reason to replay with everyone.
+const HEROES_KEY = "artgian-jump-heroes-v1";
+export type HeroClears = Record<string, string[]>;
+export function loadHeroClears(store = storage()): HeroClears {
+  const raw = readJson<HeroClears>(HEROES_KEY, store), clears: HeroClears = {};
+  for (const [id, value] of Object.entries(raw))
+    if (Array.isArray(value)) clears[id] = [...new Set(value.filter((v): v is string => typeof v === "string"))];
+  return clears;
+}
+/** Returns true when this clear is the character's first on that level. */
+export function saveHeroClear(characterId: string, levelId: string, store = storage()) {
+  const clears = loadHeroClears(store), list = clears[characterId] ?? [];
+  if (list.includes(levelId)) return false;
+  clears[characterId] = [...list, levelId];
+  writeJson(HEROES_KEY, clears, store);
+  return true;
+}

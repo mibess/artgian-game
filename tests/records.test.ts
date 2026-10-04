@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { applyRun, loadRecords, saveRun, starCount, hasStar, totalStars, loadSettings, saveSettings, formatTime } from "../src/systems/Records.ts";
+import { applyRun, loadRecords, saveRun, starCount, hasStar, totalStars, loadSettings, saveSettings, formatTime, loadHeroClears, saveHeroClear } from "../src/systems/Records.ts";
 
 class MemoryStorage {
   data = new Map<string, string>();
@@ -60,4 +60,14 @@ test("Settings and time formatting", () => {
   saveSettings({ muted: true }, store);
   assert.equal(loadSettings(store).muted, true);
   assert.equal(formatTime(125_900), "02:05");
+});
+test("Each character tracks the levels it cleared", () => {
+  const store = new MemoryStorage() as unknown as Storage;
+  assert.ok(saveHeroClear("margo", "garden", store));
+  assert.ok(!saveHeroClear("margo", "garden", store));
+  assert.ok(saveHeroClear("margo", "home", store));
+  assert.ok(saveHeroClear("mib", "home", store));
+  assert.deepEqual(loadHeroClears(store), { margo: ["garden", "home"], mib: ["home"] });
+  store.setItem("artgian-jump-heroes-v1", JSON.stringify({ angel: ["home", 3, "home"], bad: "x" }));
+  assert.deepEqual(loadHeroClears(store), { angel: ["home"] });
 });

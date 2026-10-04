@@ -18,11 +18,13 @@ import { initialState, stepSimulation, platformAt, STEP_MS, type Simulation } fr
 import { hazardAnimationPose } from "../config/hazardAnimations";
 import { refreshCanvasTextures } from "../art/runtimeTextures";
 import { beeFlight, beeAnimationPose } from "../config/garden";
-import { hasStar, loadRecords, saveRun } from "../systems/Records";
+import { hasStar, loadHeroClears, loadRecords, saveHeroClear, saveRun } from "../systems/Records";
 import { levelIntro } from "../ui/LevelIntro";
 
 const MILESTONES = [0.25, 0.5, 0.75];
 const vibrate = (pattern: number | number[]) => {
+  // Browsers reject vibration before the first user gesture.
+  if (!navigator.userActivation?.hasBeenActive) return;
   try { navigator.vibrate?.(pattern); } catch { /* Unsupported. */ }
 };
 interface Hazard {
@@ -442,6 +444,9 @@ export class GameScene extends Phaser.Scene {
     this.audio.play("complete");
     vibrate([40, 60, 40]);
     const update = this.saveResult(true);
+    const hero = String(this.registry.get("character") ?? "");
+    const heroFirst = saveHeroClear(hero, this.level.id);
+    const heroClears = loadHeroClears()[hero]?.length ?? 0;
     this.hud.message("ÚLTIMA CAMADA…");
     this.time.delayedCall(1300, () => {
       this.cameras.main.flash(450, 255, 213, 139);
@@ -453,6 +458,8 @@ export class GameScene extends Phaser.Scene {
         time: this.elapsed,
         lives: this.lives,
         update,
+        heroFirst,
+        heroClears,
       }),
     );
   }
