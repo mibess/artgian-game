@@ -50,6 +50,12 @@ cookies nem headers do navegador. Redirecionamentos do upstream são rejeitados:
 e trata respostas 3xx sem segui-las. O runtime Workers rejeita `redirect: "error"`
 antes de enviar a requisição.
 
+- Segredo `COUPON_GAME_API_KEY` ausente ou curto: resposta imediata 503
+  `{status: "unconfigured"}`, sem consumir tentativas, sem lease e sem alterar a
+  conclusão. A tela informa que os cupons estão indisponíveis e que a conclusão
+  foi salva; depois de configurar o segredo, “Ver meu último cupom” emite
+  normalmente. O log registra `coupon_unconfigured`. É o comportamento esperado
+  em `npm run dev` sem a homologação explícita descrita abaixo.
 - Timeout de 8 segundos, erro de rede ou 5xx: espera progressiva
   persistida, de 1 segundo até 5 minutos, reutilizando a chave e o corpo.
 - Resposta 200/201 fora do contrato esperado (incluindo percentual não permitido):
