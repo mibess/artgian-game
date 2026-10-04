@@ -57,7 +57,8 @@ export class MenuScene extends Phaser.Scene {
     const cards = characters.map((character, index) => {
       const x = 270 + (index - (characters.length - 1) / 2) * characterSpacing;
       const root = this.add.container(x, 439);
-      const halo = this.add.ellipse(0, -62, 128 * portraitScale, 160, colors[index], 0.12);
+      const halo = this.add.image(0, -62, "glow").setDisplaySize(170 * portraitScale, 230)
+        .setTint(colors[index]).setBlendMode(Phaser.BlendModes.ADD);
       const ring = this.add.ellipse(0, 0, 110 * portraitScale, 18, colors[index], 0.16).setStrokeStyle(2, colors[index], 0.4);
       const portrait = this.add.image(0, 0, character.id + "-idle", 0)
         .setOrigin(character.originX, character.originY).setDisplaySize(190, 190);
@@ -92,7 +93,7 @@ export class MenuScene extends Phaser.Scene {
         this.tweens.add({ targets: card.portrait, scaleX: (active ? 212 : 185) * portraitScale / 256,
           scaleY: (active ? 212 : 185) * portraitScale / 256, alpha: active ? 1 : 0.72,
           duration: animate ? duration : 0, ease: "Back.Out" });
-        card.halo.setAlpha(active ? 1 : 0);
+        card.halo.setAlpha(active ? 0.3 : 0);
         card.ring.setAlpha(active ? 1 : 0.2);
         card.portrait.setY(0);
         if (card.fx) {
