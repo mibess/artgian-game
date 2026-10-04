@@ -20,7 +20,8 @@ export function result(s: Phaser.Scene, win: boolean, data: ResultData & { progr
   s.cameras.main.setBackgroundColor("#0d1b26");
   s.add.image(270, 480, level.background).setDisplaySize(600, 1066).setAlpha(0.22);
   s.add.rectangle(270, 480, 540, 960, 0x08111c, 0.74);
-  s.add.graphics().fillStyle(0x633342, 0.18).fillCircle(270, 290, 190);
+  // Soft radial light behind the character; a flat circle showed a hard edge.
+  s.add.image(270, 290, "glow").setDisplaySize(460, 460).setTint(0x8a3f55).setAlpha(0.35);
   text(270, 92, "A R T G I A N", 16, "#dac8a5");
   text(270, 126, level.name.toUpperCase(), 12, "#839eac").setLetterSpacing(3);
   const hero = s.add.image(270, 280, character.id + "-jump", characterFrameCount(character) - 1)

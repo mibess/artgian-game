@@ -17,7 +17,8 @@ export function victory(s: Phaser.Scene, data: ResultData) {
   const level = getLevel(s.registry.get("level"));
   const next = levels[levels.indexOf(level) + 1];
   const record = data.update?.record ?? loadRecords()[level.id];
-  const earned = data.update?.stars ?? [0, 1, 2].map(i => hasStar(record, i));
+  // Reaching this screen always earns the first star, even without saved records.
+  const earned = data.update?.stars ?? [true, hasStar(record, 1), hasStar(record, 2)];
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   // Effects only; the page already has a user gesture, so this context may start.
   const audio = new AudioSystem();
@@ -59,8 +60,9 @@ export function victory(s: Phaser.Scene, data: ResultData) {
     : data.update?.newTime ? "NOVO RECORDE DE TEMPO!" : "";
 
   panel(36, 326, 468, 176, 0x11363e, 0xb89054);
-  s.add.ellipse(270, 434, 240, 32, 0x000c13, 0.5);
-  s.add.circle(270, 400, 74, 0xffcd76, 0.07);
+  s.add.image(270, 434, "glow").setDisplaySize(260, 44).setTint(0x000000).setAlpha(0.55);
+  s.add.image(270, 400, "glow").setDisplaySize(240, 200).setTint(0xffcd76)
+    .setBlendMode(Phaser.BlendModes.ADD).setAlpha(0.18);
   const product = s.add.sprite(270, 402, level.product);
   product.setScale(Math.min(220 / product.width, 112 / product.height));
   if (level.id === "garden") animateGardenSprite(product, "bowl");
