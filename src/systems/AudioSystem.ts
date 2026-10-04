@@ -1,8 +1,12 @@
+import { loadSettings, saveSettings } from "./Records";
 import { levelTracks, midiToFreq, type TrackConfig } from "./MusicTracks";
+
+export type SoundEffect = "jump" | "land" | "collect" | "hurt" | "laser" | "platform"
+  | "milestone" | "go" | "star" | "complete";
 
 export class AudioSystem {
   ctx?: AudioContext;
-  muted = false;
+  muted = loadSettings().muted;
   hum?: OscillatorNode;
   gain?: GainNode;
   private masterGain?: GainNode;
@@ -386,34 +390,65 @@ export class AudioSystem {
     }
   }
 
-  play(kind: "jump" | "collect" | "hurt" | "laser" | "platform" | "complete") {
-    if (!this.ctx || !this.masterGain || this.muted) return;
-    const c = this.ctx,
-      o = c.createOscillator(),
-      g = c.createGain();
-    o.type = kind === "hurt" ? "sawtooth" : "sine";
-    const f = {
-      jump: 340,
-      collect: 900,
-      hurt: 120,
-      laser: 160,
-      platform: 520,
-      complete: 660,
-    }[kind];
-    o.frequency.setValueAtTime(f, c.currentTime);
-    o.frequency.exponentialRampToValueAtTime(
-      kind === "hurt" ? 40 : f * 1.7,
-      c.currentTime + 0.14,
-    );
-    g.gain.setValueAtTime(0.0675, c.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 0.22);
+  private tone(freq: number, at: number, duration: number, type: OscillatorType = "sine",
+    volume = 0.06, endFreq = freq) {
+    if (!this.ctx || !this.masterGain) return;
+    const c = this.ctx, o = c.createOscillator(), g = c.createGain();
+    o.type = type;
+    o.frequency.setValueAtTime(freq, at);
+    if (endFreq !== freq) o.frequency.exponentialRampToValueAtTime(endFreq, at + duration * 0.7);
+    g.gain.setValueAtTime(0.0001, at);
+    g.gain.exponentialRampToValueAtTime(volume, at + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.001, at + duration);
     o.connect(g).connect(this.masterGain);
-    o.start();
-    o.stop(c.currentTime + 0.23);
+    o.start(at);
+    o.stop(at + duration + 0.02);
+  }
+
+  /** `step` raises pitch for streaks (collect) or picks the note (star). */
+  play(kind: SoundEffect, step = 0) {
+    if (!this.ctx || !this.masterGain || this.muted) return;
+    const t = this.ctx.currentTime;
+    const scale = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24];
+    const note = (semitones: number, base = 523.25) => base * 2 ** (semitones / 12);
+    switch (kind) {
+      case "jump": this.tone(300 + Math.random() * 30, t, 0.16, "sine", 0.05, 560); break;
+      case "land": this.tone(140, t, 0.08, "triangle", 0.035, 70); break;
+      case "collect": {
+        const f = note(scale[Math.min(step, scale.length - 1)], 880);
+        this.tone(f, t, 0.12, "triangle", 0.05);
+        this.tone(f * 1.5, t + 0.05, 0.18, "sine", 0.04);
+        break;
+      }
+      case "hurt":
+        this.tone(220, t, 0.25, "sawtooth", 0.06, 50);
+        this.tone(110, t, 0.3, "square", 0.025, 40);
+        break;
+      case "laser": this.tone(160, t, 0.22, "sine", 0.06, 270); break;
+      case "platform":
+        [0, 4, 7].forEach((n, i) => this.tone(note(n), t + i * 0.07, 0.25, "triangle", 0.05));
+        break;
+      case "milestone":
+        [0, 7, 12].forEach((n, i) => this.tone(note(n, 659.25), t + i * 0.06, 0.2, "sine", 0.045));
+        break;
+      case "go":
+        this.tone(note(0), t, 0.12, "triangle", 0.05);
+        this.tone(note(7), t + 0.1, 0.28, "triangle", 0.06);
+        break;
+      case "star":
+        [0, 4, 7, 12].forEach((n, i) =>
+          this.tone(note(n + step * 2, 659.25), t + i * 0.045, 0.32, i % 2 ? "sine" : "triangle", 0.045));
+        break;
+      case "complete":
+        [0, 4, 7, 12, 16].forEach((n, i) => this.tone(note(n), t + i * 0.09, 0.5, "triangle", 0.05));
+        this.tone(note(-12), t, 0.9, "sine", 0.04);
+        break;
+    }
   }
 
   toggle() {
     this.muted = !this.muted;
+    saveSettings({ muted: this.muted });
     if (this.gain) this.gain.gain.value = this.muted ? 0 : 0.004;
     if (this.musicGain) {
       this.musicGain.gain.value = this.muted ? 0 : this.musicVolume;

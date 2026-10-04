@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { W, H, WORLD_H, FLOOR } from "../config/gameConfig";
+import { W, H, WORLD_H, FLOOR, TOP } from "../config/gameConfig";
 import { Player } from "../entities/Player";
 import { Platform } from "../entities/Platform";
 import { Collectible } from "../entities/Collectible";
@@ -18,6 +18,13 @@ import { initialState, stepSimulation, platformAt, STEP_MS, type Simulation } fr
 import { hazardAnimationPose } from "../config/hazardAnimations";
 import { refreshCanvasTextures } from "../art/runtimeTextures";
 import { beeFlight, beeAnimationPose } from "../config/garden";
+import { hasStar, loadRecords, saveRun } from "../systems/Records";
+import { levelIntro } from "../ui/LevelIntro";
+
+const MILESTONES = [0.25, 0.5, 0.75];
+const vibrate = (pattern: number | number[]) => {
+  try { navigator.vibrate?.(pattern); } catch { /* Unsupported. */ }
+};
 interface Hazard {
   obj: Phaser.GameObjects.Rectangle;
   kind: HazardKind;
@@ -58,6 +65,12 @@ export class GameScene extends Phaser.Scene {
   private readonly reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   support?: Platform;
   highestCameraY = WORLD_H - H;
+  collectStreak = 0;
+  lastCollectAt = -99999;
+  milestone = 0;
+  bestProgress = 0;
+  bestMarker?: Phaser.GameObjects.Container;
+  flags = new Map<number, Phaser.GameObjects.Image>();
   constructor() {
     super("Game");
   }
@@ -85,6 +98,12 @@ export class GameScene extends Phaser.Scene {
     this.paused = false;
     this.support = undefined;
     this.highestCameraY = WORLD_H - H;
+    this.collectStreak = 0;
+    this.lastCollectAt = -99999;
+    this.milestone = 0;
+    this.bestProgress = loadRecords()[this.level.id]?.bestProgress ?? 0;
+    this.bestMarker = undefined;
+    this.flags = new Map();
     this.checkpoint = new CheckpointSystem();
     this.audio = new AudioSystem();
     this.audio.startLevelMusic(this.level.id);
@@ -112,6 +131,13 @@ export class GameScene extends Phaser.Scene {
           .setOrigin(0.5)
           .setDepth(6);
       }
+      if (p.checkpoint && this.textures.exists("checkpoint-flag")) {
+        // Origin at the pole's base; grey until the checkpoint is reached.
+        const flag = this.add.image(p.x + p.w / 2 - 16, p.y - 9, "checkpoint-flag")
+          .setOrigin(0.8, 0.98).setDepth(6).setTint(0x6d8790).setAlpha(0.85);
+        flag.setScale(58 / flag.height);
+        this.flags.set(p.checkpoint, flag);
+      }
       if (p.kind === "boost")
         this.add
           .text(p.x, p.y - 25, "↑ ↑ ↑", { fontSize: "23px", color: "#66ffe0" })
@@ -124,6 +150,7 @@ export class GameScene extends Phaser.Scene {
       return a;
     });
     this.player = new Player(this, 105, FLOOR - 57);
+    if (this.bestProgress > 0.03 && this.bestProgress < 1) this.drawBestMarker();
     this.cameras.main.setBounds(0, 0, W, WORLD_H);
     this.cameras.main.scrollY = WORLD_H - H;
     // Rendering uses Phaser; all gameplay is predicted by the same fixed-step
@@ -147,22 +174,30 @@ export class GameScene extends Phaser.Scene {
       menu: () => this.scene.start("Menu"),
       sound: () => { this.audio.unlock(); return this.audio.toggle(); },
       unlock: () => this.audio.unlock(),
+      muted: this.audio.muted,
     });
     const connection = new GameSession();
     const startToken = {};
     this.registry.set("activeRunStart", startToken);
-    this.hud.message("PREPARANDO PARTIDA…");
+    const intro = levelIntro(this, this.level, this.reducedMotion);
+    const minimumIntro = new Promise<void>(resolve =>
+      this.time.delayedCall(this.reducedMotion ? 400 : 1500, () => resolve()));
+    const current = () => this.scene.isActive() && this.registry.get("activeRunStart") === startToken;
     void connection.start(this.level.id).then(() => {
-      if (!this.scene.isActive() || this.registry.get("activeRunStart") !== startToken) return;
+      if (!current()) return;
       this.gameSession = connection;
       this.registry.set("rewardSession", connection);
-      this.hud.message("PARTIDA VALENDO CUPOM");
+      intro.setStatus("PARTIDA VALENDO CUPOM ✓");
     }).catch(() => {
-      if (this.scene.isActive() && this.registry.get("activeRunStart") === startToken)
-        this.hud.message("SEM CONEXÃO • CUPOM INDISPONÍVEL NESTA PARTIDA");
-    }).finally(() => {
-      if (this.scene.isActive() && this.registry.get("activeRunStart") === startToken) this.simulationReady = true;
-    });
+      if (current()) intro.setStatus("SEM CONEXÃO • CUPOM INDISPONÍVEL");
+    }).finally(() => minimumIntro.then(() => {
+      if (!current()) return;
+      intro.close();
+      this.simulationReady = true;
+      this.hud.callout("VAI!", "#9aeedb", 52);
+      this.audio.play("go");
+      this.hud.message(this.gameSession ? this.level.hint : "Sem conexão: jogue à vontade, mas esta partida não gera cupom.", 3800);
+    }));
     this.keys = this.input.keyboard!.addKeys(
       "A,D,LEFT,RIGHT,SPACE",
     ) as typeof this.keys;
@@ -195,6 +230,16 @@ export class GameScene extends Phaser.Scene {
         if (this.paused) object.anims.pause(); else object.anims.resume();
       }
     }
+    if (this.paused) {
+      const sim = this.simulation, total = this.level.collectibles.length;
+      const record = loadRecords()[this.level.id];
+      this.controls.setGoals([
+        { label: `Concluir a fase · ${Math.floor(sim.maxProgress * 100)}% impresso`, done: hasStar(record, 0) },
+        { label: `Todos os filamentos · ${sim.collected.length}/${total}`, done: sim.collected.length >= total || hasStar(record, 1) },
+        { label: sim.lives >= 3 ? "Sem perder vidas · até agora, perfeito!" : "Sem perder vidas · tente de novo depois",
+          done: hasStar(record, 2) },
+      ]);
+    }
     this.controls.setPaused(this.paused);
     this.controls.clear();
     this.pendingJump = false;
@@ -223,6 +268,7 @@ export class GameScene extends Phaser.Scene {
     if (this.checkpoint.activate(this.simulation.checkpoint, this.simulation.checkpointX,
       this.simulation.checkpointFeet + 16.5)) {
       this.hud.message("CHECKPOINT SALVO • CAMADA " + this.simulation.checkpoint);
+      this.raiseFlag(this.flags.get(this.simulation.checkpoint));
       this.audio.play("platform");
       this.burst(p.x, p.y - 20, 0x81f1ce, 20);
     }
@@ -306,6 +352,68 @@ export class GameScene extends Phaser.Scene {
     }
     this.hazards.push({ obj, art, kind, x, y, active: true, phase });
   }
+  /** Height reached in an earlier attempt, so every run has a target to beat. */
+  drawBestMarker() {
+    const y = FLOOR - this.bestProgress * (FLOOR - TOP) - 65;
+    const line = this.add.graphics();
+    line.lineStyle(2, 0xffcf7a, 0.75);
+    for (let x = 0; x < W; x += 22) line.lineBetween(x, 0, x + 12, 0);
+    const label = this.add.text(W - 12, -14, `SEU RECORDE · ${Math.floor(this.bestProgress * 100)}%`, {
+      fontFamily: "Trebuchet MS, Arial", fontSize: "13px", fontStyle: "bold", color: "#ffe1a1",
+      backgroundColor: "#0b2632cc", padding: { x: 8, y: 3 },
+    }).setOrigin(1, 0.5);
+    this.bestMarker = this.add.container(0, y, [line, label]).setDepth(4);
+  }
+  passBestMarker() {
+    const marker = this.bestMarker;
+    if (!marker) return;
+    this.bestMarker = undefined;
+    this.flags = new Map();
+    this.hud.callout("NOVO RECORDE!", "#ffd27a", 40);
+    this.audio.play("milestone");
+    this.burst(W / 2, marker.y, 0xffd27a, 24);
+    this.tweens.add({ targets: marker, alpha: 0, duration: 600, onComplete: () => marker.destroy() });
+  }
+  raiseFlag(flag?: Phaser.GameObjects.Image) {
+    if (!flag) return;
+    flag.clearTint().setAlpha(1);
+    if (this.reducedMotion) return;
+    const scale = flag.scale;
+    flag.setScale(scale * 0.3, scale * 1.4);
+    this.tweens.add({ targets: flag, scaleX: scale, scaleY: scale, duration: 420, ease: "Back.Out" });
+    this.tweens.add({ targets: flag, angle: { from: -6, to: 4 }, duration: 900, delay: 420,
+      yoyo: true, repeat: -1, ease: "Sine.InOut" });
+    const glow = this.add.image(flag.x, flag.y - 30, "glow").setTint(0x81f1ce)
+      .setBlendMode(Phaser.BlendModes.ADD).setDisplaySize(40, 40).setDepth(5);
+    this.tweens.add({ targets: glow, displayWidth: 170, displayHeight: 170, alpha: 0, duration: 700,
+      onComplete: () => glow.destroy() });
+  }
+  dust(x: number, y: number, count: number, spread = 1) {
+    if (this.reducedMotion) return;
+    for (let i = 0; i < count; i++) {
+      const side = i % 2 ? 1 : -1;
+      const puff = this.add.image(x + side * 6, y, "particle")
+        .setTint(getAtmosphere(this.level.id).jump).setAlpha(0.7)
+        .setScale(0.35 + Math.random() * 0.3).setDepth(9);
+      this.tweens.add({ targets: puff, x: puff.x + side * (18 + Math.random() * 26) * spread,
+        y: y - Math.random() * 12, scale: 0.9, alpha: 0, duration: 380 + Math.random() * 200,
+        ease: "Quad.Out", onComplete: () => puff.destroy() });
+    }
+  }
+  floatText(x: number, y: number, value: string, color: string, size = 22) {
+    const label = this.add.text(x, y, value, {
+      fontFamily: "Trebuchet MS, Arial", fontSize: `${size}px`, fontStyle: "bold", color,
+      stroke: "#06202b", strokeThickness: 5,
+    }).setOrigin(0.5).setDepth(31);
+    this.tweens.add({ targets: label, y: y - 52, alpha: 0, duration: 800, ease: "Cubic.Out",
+      onComplete: () => label.destroy() });
+  }
+  saveResult(won: boolean) {
+    return saveRun(this.level.id, {
+      won, count: this.simulation.collected.length, total: this.level.collectibles.length,
+      lives: this.simulation.lives, time: this.elapsed, progress: this.simulation.maxProgress,
+    });
+  }
   burst(x: number, y: number, color: number, count: number) {
     for (let i = 0; i < count; i++) {
       const p = this.add
@@ -332,6 +440,8 @@ export class GameScene extends Phaser.Scene {
     this.player.pose("celebrate");
     this.audio.duckMusic(3.0);
     this.audio.play("complete");
+    vibrate([40, 60, 40]);
+    const update = this.saveResult(true);
     this.hud.message("ÚLTIMA CAMADA…");
     this.time.delayedCall(1300, () => {
       this.cameras.main.flash(450, 255, 213, 139);
@@ -342,6 +452,7 @@ export class GameScene extends Phaser.Scene {
         count: this.collected,
         time: this.elapsed,
         lives: this.lives,
+        update,
       }),
     );
   }
@@ -359,6 +470,7 @@ export class GameScene extends Phaser.Scene {
       const beforeLives = this.simulation.lives;
       const beforeLanding = this.simulation.lastLanding;
       const beforeYVelocity = this.simulation.vy;
+      const beforeSupport = this.simulation.support;
       const command = { axis, jump: this.pendingJump };
       this.pendingJump = false;
       stepSimulation(this.simulation, this.level, command);
@@ -367,19 +479,33 @@ export class GameScene extends Phaser.Scene {
       this.elapsed = this.simulation.tick * STEP_MS;
       if (this.simulation.lastLanding !== beforeLanding)
         this.land(this.ledges[this.simulation.lastLanding]);
-      if (beforeYVelocity >= 0 && this.simulation.vy < 0) this.audio.play("jump");
+      if (beforeYVelocity >= 0 && this.simulation.vy < 0) {
+        const boost = this.simulation.vy < -800;
+        this.audio.play(boost ? "milestone" : "jump");
+        this.player.squash(boost ? 0.72 : 0.84, boost ? 1.32 : 1.18);
+        this.dust(this.simulation.x, this.simulation.feet, boost ? 10 : 5, boost ? 1.6 : 1);
+      } else if (beforeSupport < 0 && this.simulation.support >= 0) {
+        this.audio.play("land");
+        this.player.squash(1.2, 0.82);
+      }
       if (this.simulation.lives < beforeLives) {
         this.hud.damage(this.simulation.lives);
         this.audio.play("hurt");
         this.cameras.main.shake(180, 0.009);
+        if (!this.reducedMotion) this.cameras.main.flash(260, 255, 70, 80, true);
+        vibrate(90);
+        this.collectStreak = 0;
+        this.floatText(this.simulation.x, this.simulation.feet - 90, "−1 ♥", "#ff8a95", 26);
       }
       if (this.simulation.status === "won") this.complete();
       else if (this.simulation.status === "lost") {
         this.locked = true;
         // Persist the final loss commands, too; no reward is created.
         void this.gameSession?.finish().catch(() => {});
+        const update = this.saveResult(false);
         this.time.delayedCall(650, () => this.scene.start("GameOver", {
           count: this.simulation.collected.length, time: this.elapsed,
+          progress: this.simulation.maxProgress, update,
         }));
       }
     }
@@ -402,8 +528,18 @@ export class GameScene extends Phaser.Scene {
     for (let i = 0; i < this.collectibleObjects.length; i++) {
       const c = this.collectibleObjects[i];
       if (c.active && sim.collected.includes(this.level.collectibles[i])) {
-        c.disableBody(true, true); this.audio.play("collect"); this.burst(c.x, c.y, 0xffcc69, 12);
-        if (this.collected === this.level.collectibles.length) this.hud.message("FILAMENTO COMPLETO! ✦");
+        // Quick successive pickups climb the scale, rewarding a flowing route.
+        this.collectStreak = this.elapsed - this.lastCollectAt < 3200 ? this.collectStreak + 1 : 0;
+        this.lastCollectAt = this.elapsed;
+        c.collect();
+        this.audio.play("collect", this.collectStreak);
+        this.burst(c.x, c.y, 0xffcc69, 12);
+        this.floatText(c.x + (c.x < W / 2 ? 62 : -62), c.y - 20, this.collectStreak >= 2 ? `+1  ×${this.collectStreak + 1}` : "+1",
+          this.collectStreak >= 2 ? "#ffd27a" : "#fff1cf");
+        if (this.collected === this.level.collectibles.length) {
+          this.hud.callout("TODOS OS FILAMENTOS!", "#9aeedb", 30);
+          vibrate([30, 40, 30]);
+        }
       }
     }
     const body = this.player.body as Phaser.Physics.Arcade.Body;
@@ -497,6 +633,12 @@ export class GameScene extends Phaser.Scene {
     );
     this.player.syncVisual();
     this.printer.update(this.maxProgress, this.elapsed);
-    this.hud.update(this.lives, this.collected, this.maxProgress);
+    this.hud.update(this.lives, this.collected, this.maxProgress, this.elapsed);
+    if (!this.locked && this.milestone < MILESTONES.length && this.maxProgress >= MILESTONES[this.milestone]) {
+      this.hud.callout(`${Math.round(MILESTONES[this.milestone] * 100)}% IMPRESSO`, "#ffe1a1", 32);
+      this.audio.play("milestone");
+      this.milestone++;
+    }
+    if (this.bestMarker && this.maxProgress > this.bestProgress + 0.005) this.passBestMarker();
   }
 }

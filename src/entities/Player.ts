@@ -23,6 +23,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private character: Character;
   private visualFrame = 0;
   private forcedPose?: { texture: string; frame: number };
+  private squashX = 1;
+  private squashY = 1;
 
   constructor(s: Phaser.Scene, x: number, y: number) {
     super(s, x, y, "pose0");
@@ -118,12 +120,20 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       ? "jump"
       : pose.texture.endsWith("-walk") ? "walk" : "idle";
     const size = 165.6 * this.character.animationScale[action];
+    // Squash and stretch ease back to rest; the origin keeps the feet planted.
+    this.squashX += (1 - this.squashX) * 0.2;
+    this.squashY += (1 - this.squashY) * 0.2;
     this.visual
       .setPosition(this.x, this.y + 40.5)
       .setTexture(pose.texture, Math.min(pose.frame, characterFrameCount(this.character) - 1))
-      .setDisplaySize(size, size)
+      .setDisplaySize(size * this.squashX, size * this.squashY)
       .setFlipX(this.flipX)
       .setAlpha(this.alpha);
+  }
+
+  squash(x: number, y: number) {
+    this.squashX = x;
+    this.squashY = y;
   }
 
   pose(state: PlayerState) {
