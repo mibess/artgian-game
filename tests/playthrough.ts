@@ -27,7 +27,7 @@ export function playthrough(level: Level): Command[] {
           const axis = (Math.abs(difference) < 6 ? 0 : Math.sign(difference)) as Command["axis"];
           advance(trial, { axis, jump: frame === 0 }, log);
           if (trial.lives < state.lives) break;
-          if ((trial.lastLanding >= target || trial.status === "won") && !trial.respawnAt) {
+          if ((trial.lastLanding >= target || (trial.status as Simulation["status"]) === "won") && !trial.respawnAt) {
             const rest = search(trial, trial.lastLanding);
             if (rest) return [...log, ...rest];
             break;

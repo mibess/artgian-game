@@ -109,7 +109,7 @@ O `.env.example` é apenas referência: nunca inclua valores reais no código,
 em variáveis `VITE_*`, no bundle ou no repositório. `npm run preview` mostra
 somente os assets compilados; use `npm run dev` para a API local.
 
-Os testes reproduzem rotas vencedoras completas nas três fases e exercitam a API
+Os testes reproduzem rotas vencedoras completas em todas as fases e exercitam a API
 com SQLite e transporte da loja simulado: fraude, isolamento, recarga, repetição,
 concorrência, timeout, 5xx, 429, 410 e expiração. A migração inicial está em
 `drizzle/0000_closed_storm.sql`; alterações futuras geram migrações adicionais com

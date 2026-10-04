@@ -41,6 +41,14 @@ export const atmospheres: Record<string, Atmosphere> = {
     motes: [0xffedc2, 0xd6eec3], moteCount: 14, moteDuration: 6500, moteRise: 65,
     land: 0xe6eac8, jump: 0xffd597,
   },
+  bed: {
+    backgroundPath: "assets/levels/bed/background.png",
+    shade: 0x0a1822, shadeAlpha: 0.14,
+    lights: [0xff9a52, 0x6fd8e8], lightSize: [90, 240],
+    lightAlpha: [0.14, 0.3], lightDuration: 1500, rhythmic: true,
+    motes: [0xffc58a, 0x9fe8ff], moteCount: 18, moteDuration: 4200, moteRise: 110,
+    land: 0xffb37a, jump: 0xffd7a8,
+  },
   studio: {
     backgroundPath: "assets/levels/studio/background-parallax.png",
     shade: 0x14172c, shadeAlpha: 0.12,

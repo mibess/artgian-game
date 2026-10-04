@@ -35,6 +35,7 @@ export function workshop(s: Phaser.Scene) {
   const sections = level.id === "home" ? ["SALA DE ESTAR", "CANTINHO DO CAFÉ", "LAR, DOCE LAR"]
     : level.id === "studio" ? ["PASSAGEM DE SOM", "ENCONTRE O RITMO", "ÚLTIMO ACORDE"]
     : level.id === "garden" ? ["QUINTAL DA MARGÔ", "ALÉM DA CERCA", "HORA DOURADA"]
+    : level.id === "bed" ? ["MESA AQUECIDA", "CAMADA POR CAMADA", "BICO DE IMPRESSÃO"]
     : ["PREPARAÇÃO", "ESTRUTURA", "ACABAMENTO"];
   for (const [index, title] of sections.entries())
     s.add.text(270, FLOOR - 180 - index * 2100, title, { fontFamily: "Arial", fontSize: "17px", letterSpacing: 5, color: "#b3d7d8" }).setOrigin(0.5).setAlpha(0.45).setDepth(-19);

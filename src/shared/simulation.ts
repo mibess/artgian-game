@@ -1,6 +1,6 @@
 import { FLOOR, TOP, GRAVITY, JUMP, SPEED, WORLD_H, H } from "../config/gameConfig.ts";
 import { beeFlight } from "../config/garden.ts";
-import { beatState, hazardState, type Level, type HazardSpec } from "../config/levels.ts";
+import { beatState, dripFall, fanCycle, hazardState, nozzleX, type Level, type HazardSpec } from "../config/levels.ts";
 
 // This is the sole gameplay authority, used for client prediction and server replay.
 // Only input commands cross the trust boundary; positions, lives and wins never do.
@@ -28,7 +28,8 @@ const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n
 export function platformAt(level: Level, state: Simulation, i: number, time = state.tick * STEP_MS) {
   const p = level.platforms[i];
   const age = state.activated[i] < 0 ? -1 : time - state.activated[i];
-  return { x: p.x + (p.kind === "horizontal" ? Math.sin(time / 1300) * 55 : 0),
+  return { x: p.x + (p.kind === "horizontal" ? Math.sin(time / 1300) * 55 :
+      p.kind === "shuttle" ? Math.sin((time + (p.phase ?? 0)) / 750) * 100 : 0),
     y: p.y + (p.kind === "vertical" ? Math.sin(time / 1400) * 32 :
       p.kind === "sink" && age >= 0 && age < 2500 ?
         age < 1600 ? Math.min(42, age * 0.05) : Math.max(0, 42 - (age - 1600) * 0.05) : 0),
@@ -41,6 +42,8 @@ export function hazardAt(h: HazardSpec, time: number) {
     const flight = beeFlight(time, h.phase, h.x < 270);
     return { x: flight.x, y: y + flight.offsetY, active: flight.active, warning: flight.warning };
   }
+  if (h.kind === "nozzle") x = nozzleX(time, h.phase);
+  if (h.kind === "drip") y += dripFall(time, h.phase).offsetY;
   if (h.kind === "head") x += Math.sin(time / 950) * 175;
   if (h.kind === "arm") x += Math.sin(time / 800) * 70;
   if (h.kind === "pendant") {
@@ -87,6 +90,12 @@ export function stepSimulation(s: Simulation, level: Level, input: Command): voi
   const oldFeet = s.feet;
   const oldX = s.x;
   s.x = clamp(s.x + s.vx * dt, 25, 515);
+  // Cooling fans push sideways inside their band; they never cause damage.
+  for (const h of level.hazards) {
+    if (h.kind !== "fan" || !hazardState("fan", time, h.phase).active) continue;
+    if (s.feet > h.y - h.h / 2 && s.feet - 65 < h.y + h.h / 2)
+      s.x = clamp(s.x + (h.x < 270 ? 1 : -1) * fanCycle.push * dt, 25, 515);
+  }
   const feetHalf = 13;
   if (retainedSupport && s.support >= 0) {
     const p = level.platforms[s.support];
@@ -157,7 +166,7 @@ export function stepSimulation(s: Simulation, level: Level, input: Command): voi
     s.cameraY + (target - s.cameraY) * (1 - Math.exp(-STEP_MS / 200)), 0, WORLD_H - H);
   const hit = level.hazards.some(h => {
     const at = hazardAt(h, time);
-    return at.active && s.x + 13 > at.x - h.w / 2 && s.x - 13 < at.x + h.w / 2 &&
+    return h.kind !== "fan" && at.active && s.x + 13 > at.x - h.w / 2 && s.x - 13 < at.x + h.w / 2 &&
       s.feet > at.y - h.h / 2 && s.feet - 65 < at.y + h.h / 2;
   });
   if (time >= s.invulnerableUntil && (hit || y > WORLD_H + 30 || y > s.cameraY + H + 110)) {

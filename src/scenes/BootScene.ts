@@ -73,6 +73,10 @@ export class BootScene extends Phaser.Scene {
     for (const [kind, animation] of Object.entries(hazardAnimations))
       for (const sheet of [animation.idle, animation.warn])
         if (sheet && kind !== "sprinkler") this.load.spritesheet(sheet.key, sheet.path, { frameWidth: 256, frameHeight: 256 });
+    // Print bed level: transparent artwork generated with Google Flow.
+    this.load.image("bed-background", atmospheres.bed.backgroundPath);
+    for (const key of ["plate", "support", "product", "nozzle", "drip", "fan", "scraper"])
+      this.load.image("bed-" + key, `assets/levels/bed/${key}.png`);
     for (const theme of ["home", "studio"]) {
       this.load.image(theme + "-background", atmospheres[theme].backgroundPath);
       this.load.image(theme + "-atlas-source", "assets/levels/" + theme + "/assets.png");
