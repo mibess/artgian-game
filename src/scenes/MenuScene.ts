@@ -3,6 +3,7 @@ import Phaser from "phaser";
 import { restoreCompletion } from "../systems/GameSession";
 import { getLevel, levels } from "../config/levels";
 import { characters, getCharacter, characterFrameCount } from "../config/characters";
+import { mountInstallPrompt } from "../ui/InstallPrompt";
 
 export class MenuScene extends Phaser.Scene {
   private portraits: Phaser.GameObjects.Image[] = [];
@@ -12,6 +13,8 @@ export class MenuScene extends Phaser.Scene {
   create() {
     this.portraits = [];
     this.starting = false;
+    const removeInstallPrompt = mountInstallPrompt();
+    this.events.once("shutdown", removeInstallPrompt);
     this.reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     this.cameras.main.resetFX();
     this.input.enabled = true;

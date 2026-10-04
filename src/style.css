@@ -195,6 +195,42 @@ canvas { display: block; touch-action: none; }
 }
 .coupon-reward[data-loading="true"] .coupon-close { background: transparent; border-color: #507b81; }
 @keyframes coupon-spin { to { transform: rotate(360deg); } }
+.install-shortcut {
+  position: absolute; top: 10px; right: 10px; z-index: 20;
+  min-height: 44px; padding: 10px 14px; border: 1px solid #9aeedb66;
+  border-radius: 16px; color: #e2fff5; background: #082631ed;
+  font: bold 13px/1.3 "Trebuchet MS", Arial, sans-serif;
+  box-shadow: 0 4px 16px #0004; cursor: pointer; touch-action: manipulation;
+}
+.install-dialog {
+  position: fixed; inset: 0; margin: auto; box-sizing: border-box;
+  width: min(420px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  overflow-y: auto; padding: 24px; border: 1px solid #80d6c5;
+  border-radius: 24px; color: #edfff8;
+  background: linear-gradient(155deg, #173f49, #091f2c);
+  box-shadow: 0 16px 64px #0008;
+  font: 16px/1.5 "Trebuchet MS", Arial, sans-serif; touch-action: pan-y;
+}
+.install-dialog::backdrop { background: #021018d9; }
+.install-icon { display: block; margin-bottom: 16px; border-radius: 16px; }
+.install-dialog h2 { margin: 0 0 12px; font-size: 26px; font-weight: bold; line-height: 1.15; }
+.install-dialog p { margin: 0 0 16px; color: #c2e2e2; }
+.install-steps { margin: 0 0 20px; padding-left: 24px; list-style: decimal; }
+.install-steps li { padding-left: 4px; margin-bottom: 12px; }
+.install-dialog .install-note { font-size: 13px; color: #a7c8ce; }
+.install-dialog .install-feedback { color: #ffda90; }
+.install-feedback:empty { display: none; }
+.install-dialog button {
+  display: block; width: 100%; min-height: 48px; padding: 12px;
+  border: 1px solid #ffe9be; border-radius: 14px;
+  color: #15343a; background: linear-gradient(160deg, #ffe3a5, #ffbc60);
+  font: bold 16px/1.4 "Trebuchet MS", Arial, sans-serif; cursor: pointer;
+}
+.install-dialog .install-close { margin-top: 12px; border-color: #507b81; color: #def5f1; background: transparent; }
+.install-dialog button:disabled { opacity: .6; cursor: wait; }
+.install-shortcut:focus-visible, .install-dialog button:focus-visible { outline: 3px solid #9aeedb; outline-offset: 3px; }
+.install-shortcut[hidden], .install-dialog [hidden] { display: none; }
 @media (orientation: landscape) and (max-height: 600px) {
   .coupon-reward { position: fixed; inset: 12px max(16px, calc((100vw - 560px) / 2)); padding: 16px; }
   .coupon-reward[data-loading="true"] .coupon-feedback { padding: 16px; gap: 12px; }
