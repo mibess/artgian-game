@@ -1,12 +1,17 @@
 import { animateGardenSprite } from "../art/Garden";
 import Phaser from "phaser";
 import { getLevel, levels } from "../config/levels";
+import { getCharacter } from "../config/characters";
 import { couponReward } from "./CouponReward";
 import type { GameSession } from "../systems/GameSession";
 import { STAR_GOALS, formatTime, hasStar, loadRecords, totalStars, type RecordUpdate } from "../systems/Records";
 import { AudioSystem } from "../systems/AudioSystem";
 
-export interface ResultData { count: number; time: number; lives?: number; update?: RecordUpdate }
+export interface ResultData {
+  count: number; time: number; lives?: number; update?: RecordUpdate;
+  /** Whether this character cleared this level for the first time, and its total clears. */
+  heroFirst?: boolean; heroClears?: number;
+}
 
 export function victory(s: Phaser.Scene, data: ResultData) {
   const level = getLevel(s.registry.get("level"));
@@ -46,7 +51,10 @@ export function victory(s: Phaser.Scene, data: ResultData) {
   const goals = STAR_GOALS.map((goal, i) =>
     text(starX[i], 280, goal.toUpperCase(), 12, earned[i] ? "#ffe1a1" : "#6f8f96", true));
   const master = !!data.update?.newStars && totalStars(loadRecords()) >= levels.length * 3;
-  const badge = master ? "🏆 TROFÉU DE MESTRE IMPRESSOR!" : data.update?.firstClear ? "PRIMEIRA CONCLUSÃO!"
+  const heroDone = !!data.heroFirst && (data.heroClears ?? 0) >= levels.length;
+  const badge = master ? "🏆 TROFÉU DE MESTRE IMPRESSOR!"
+    : heroDone ? `🏅 ${getCharacter(s.registry.get("character")).name.toUpperCase()} ZEROU TODAS AS FASES!`
+    : data.update?.firstClear ? "PRIMEIRA CONCLUSÃO!"
     : data.update?.newStars ? `+${data.update.newStars} ESTRELA${data.update.newStars > 1 ? "S" : ""} NOVA${data.update.newStars > 1 ? "S" : ""}!`
     : data.update?.newTime ? "NOVO RECORDE DE TEMPO!" : "";
 

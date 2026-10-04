@@ -4,7 +4,7 @@ import { restoreCompletion } from "../systems/GameSession";
 import { getLevel, levels } from "../config/levels";
 import { characters, getCharacter, characterFrameCount } from "../config/characters";
 import { mountInstallPrompt } from "../ui/InstallPrompt";
-import { formatTime, hasStar, loadRecords, totalStars } from "../systems/Records";
+import { formatTime, hasStar, loadHeroClears, loadRecords, totalStars } from "../systems/Records";
 
 export class MenuScene extends Phaser.Scene {
   private portraits: Phaser.GameObjects.Image[] = [];
@@ -24,6 +24,17 @@ export class MenuScene extends Phaser.Scene {
       this.add.text(x, y, value, { fontFamily: "Arial", fontSize: size + "px", color,
         fontStyle: bold ? "bold" : "normal" }).setOrigin(0.5);
     this.add.image(270, 480, "jump-title").setDisplaySize(540, 960);
+    if (!this.reducedMotion) {
+      // Ambient loop generated from the title art (same framing). It streams
+      // after the menu appears and fades in over the still image once playing.
+      const ambient = this.add.video(270, 480).setAlpha(0);
+      ambient.once(Phaser.GameObjects.Events.VIDEO_TEXTURE, () => {
+        const element = ambient.video!;
+        ambient.setScale(540 / (element.videoWidth || 720), 960 / (element.videoHeight || 1280));
+        this.tweens.add({ targets: ambient, alpha: 1, duration: 600 });
+      });
+      ambient.loadURL("assets/menu/menu-loop.mp4", true).setMute(true).play(true);
+    }
     const shade = this.add.graphics();
     shade.fillGradientStyle(0x062b33, 0x062b33, 0x041b25, 0x041b25, 0, 0, 1, 1)
       .fillRect(0, 440, 540, 140);
@@ -36,9 +47,10 @@ export class MenuScene extends Phaser.Scene {
           delay: i * 140, repeat: -1, yoyo: true, ease: "Sine.InOut" });
       }
     }
-    text(270, 506, "ESCOLHA QUEM VAI SALTAR", 14, "#d9fff4", true)
+    const chooseLabel = text(270, 506, "ESCOLHA QUEM VAI SALTAR", 14, "#d9fff4", true)
       .setShadow(0, 2, "#031a23", 5, true, true);
     const selected = getCharacter(this.registry.get("character"));
+    const heroClears = loadHeroClears();
     const colors = [0x71e6df, 0xcbb2ff, 0xffb9d8, 0xffc98b];
     const characterSpacing = 486 / characters.length;
     const portraitScale = Math.min(1, 3 / characters.length);
@@ -53,13 +65,24 @@ export class MenuScene extends Phaser.Scene {
       this.portraits.push(portrait);
       const pill = this.add.graphics();
       const label = text(0, 36, character.name, 20, "#fff6df", true);
-      root.add([halo, ring, portrait, pill, label]);
+      // Levels this character has cleared: a counter, then a medal at 4/4.
+      const cleared = heroClears[character.id]?.length ?? 0;
+      const medal = cleared ? [
+        this.add.circle(58 * portraitScale, 22, 11, cleared >= levels.length ? 0xffc94d : 0x81f1ce)
+          .setStrokeStyle(2, 0x062b33),
+        text(58 * portraitScale, 22, cleared >= levels.length ? "★" : String(cleared), 12, "#0b2a32", true),
+      ] : [];
+      root.add([halo, ring, portrait, pill, label, ...medal]);
       const zone = this.add.zone(x, 394, characterSpacing - 14, 220).setInteractive({ useHandCursor: true });
       return { character, root, portrait, fx, halo, ring, pill, label, zone };
     });
     const selectCharacter = (id: string, animate = true) => {
       if (this.starting) return;
       this.registry.set("character", id);
+      const cleared = heroClears[id]?.length ?? 0;
+      chooseLabel.setText(!cleared ? "ESCOLHA QUEM VAI SALTAR"
+        : cleared >= levels.length ? `🏅 ${getCharacter(id).name.toUpperCase()} ZEROU TODAS AS FASES`
+        : `${getCharacter(id).name.toUpperCase()} · ${cleared} DE ${levels.length} FASES CONCLUÍDAS`);
       for (const card of cards) {
         const active = card.character.id === id;
         card.pill.clear().fillStyle(active ? 0xffce79 : 0x0b3540, 0.96)
