@@ -75,6 +75,8 @@ export function couponReward(completion: Promise<string>, parent = document.quer
         interval = setInterval(update, 250); update(); return;
       }
       if (response.status === 410) { unavailable("Esta recompensa não está mais disponível."); return; }
+      // Not retryable from the browser: the server lacks its store credential.
+      if (data.status === "unconfigured") { unavailable(data.error); return; }
       if (response.status === 202 || response.status === 429 || response.status >= 500) {
         loadingTitle.textContent = data.rateLimited ? "Limite de novos cupons atingido" : "Seu cupom está a caminho";
         if (data.rateLimited) loadingHint.textContent = "Sua conclusão está salva. Você pode voltar depois em ‘Ver meu último cupom’.";

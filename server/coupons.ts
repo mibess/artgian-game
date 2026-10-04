@@ -47,6 +47,14 @@ export async function claimReward(env: Env, id: string, playerId: string,
   }
   if (c.status === "gone") return gone();
   if (c.status === "error") return json({ status: "error", error: "Não foi possível liberar a recompensa. Tente falar com a Artgian." }, 422);
+  // A missing secret is a deployment problem, not a transient store failure:
+  // answer immediately, without consuming attempts, so the saved completion
+  // can still be claimed once the secret is configured.
+  if (!env.COUPON_GAME_API_KEY || env.COUPON_GAME_API_KEY.length < 32) {
+    console.error(JSON.stringify({ event: "coupon_unconfigured", reason: "missing_configuration" }));
+    return json({ status: "unconfigured", error: "Os cupons estão temporariamente indisponíveis. " +
+      "Sua conclusão foi salva: tente mais tarde em “Ver meu último cupom”." }, 503);
+  }
   if (c.next_attempt_at > now && c.reward && JSON.parse(c.reward).rateLimited === true)
     return limitedReward(env, playerId, c.next_attempt_at - now, now);
   if (c.next_attempt_at > now || c.lease_until > now)
@@ -61,7 +69,6 @@ export async function claimReward(env: Env, id: string, playerId: string,
   let status: Completion["status"] = "pending", reward: string | null = null;
   let delay = retryDelay(null, c.attempts, now);
   try {
-    if (!env.COUPON_GAME_API_KEY || env.COUPON_GAME_API_KEY.length < 32) throw new Error("Coupon key unavailable");
     // Never forward request headers (especially Origin, cookies or player supplied auth).
     const response = await fetchStore(ENDPOINT, {
       // Workers supports follow/manual, not redirect:error. Never follow a
@@ -90,8 +97,7 @@ export async function claimReward(env: Env, id: string, playerId: string,
     }
     else status = "error";
   } catch (error) {
-    const reason = !env.COUPON_GAME_API_KEY || env.COUPON_GAME_API_KEY.length < 32 ? "missing_configuration" :
-      error instanceof Error && error.message === "Invalid coupon response" ? "invalid_response" : "transport";
+    const reason = error instanceof Error && error.message === "Invalid coupon response" ? "invalid_response" : "transport";
     // A successful response with an invalid contract is deterministic for this
     // idempotency key. Retrying would only fetch the same unusable coupon forever.
     if (reason === "invalid_response") status = "error";

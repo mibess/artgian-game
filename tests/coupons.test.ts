@@ -311,3 +311,22 @@ test("Retry-After supports seconds and HTTP dates without shortening progressive
   assert.equal(retryDelay("1", 4, 0), 8000);
   assert.equal(retryDelay("bad", 4, 0), 8000);
 });
+
+test("missing store secret answers immediately and keeps the completion claimable", async t => {
+  const f = await fixture(); t.after(() => f.sqlite.close());
+  const id = await f.complete();
+  const key = f.env.COUPON_GAME_API_KEY;
+  f.env.COUPON_GAME_API_KEY = undefined;
+  for (let i = 0; i < 2; i++) {
+    const response = await f.request(`rewards/${id}`, {});
+    assert.equal(response.status, 503);
+    assert.equal((await response.json()).status, "unconfigured");
+  }
+  const saved = f.sqlite.prepare("SELECT status, attempts, next_attempt_at FROM completions WHERE id = ?").get(id)!;
+  assert.deepEqual([saved.status, saved.attempts, saved.next_attempt_at], ["pending", 0, 0]);
+  assert.equal(f.calls(), 0);
+  f.env.COUPON_GAME_API_KEY = key;
+  const issued = await f.request(`rewards/${id}`, {});
+  assert.equal(issued.status, 200);
+  assert.equal((await issued.json()).code, "GAME-0123456789ABCDEF0123");
+});
