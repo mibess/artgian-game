@@ -62,3 +62,5 @@ game.events.once("destroy", () => {
   window.visualViewport?.removeEventListener("resize", resizeSurface);
   window.visualViewport?.removeEventListener("scroll", resizeSurface);
 });
+// Dev-only handle for visual QA of individual scenes; stripped from production builds.
+if (import.meta.env.DEV) (window as unknown as { __game: Phaser.Game }).__game = game;

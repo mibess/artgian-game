@@ -4,6 +4,7 @@ import { restoreCompletion } from "../systems/GameSession";
 import { getLevel, levels } from "../config/levels";
 import { characters, getCharacter, characterFrameCount } from "../config/characters";
 import { mountInstallPrompt } from "../ui/InstallPrompt";
+import { formatTime, hasStar, loadRecords, totalStars } from "../systems/Records";
 
 export class MenuScene extends Phaser.Scene {
   private portraits: Phaser.GameObjects.Image[] = [];
@@ -89,7 +90,21 @@ export class MenuScene extends Phaser.Scene {
     cards.forEach(card => card.zone.on("pointerdown", () => selectCharacter(card.character.id)));
     selectCharacter(selected.id, false);
     text(35, 538, "ESCOLHA SEU MUNDO", 15, "#a8d9d9", true).setOrigin(0, 0.5);
-    text(504, 538, `${levels.length} FASES`, 14, "#a8d9d9", true).setOrigin(1, 0.5);
+    const records = loadRecords();
+    const starsEarned = totalStars(records), starsTotal = levels.length * 3;
+    const starLabel = text(504, 538, `★ ${starsEarned} / ${starsTotal}`, 15, "#ffd27a", true).setOrigin(1, 0.5);
+    if (this.textures.exists("trophy")) {
+      // Long-term goal: the trophy lights up once every star is earned.
+      const master = starsEarned >= starsTotal;
+      const trophy = this.add.image(starLabel.x - starLabel.width - 20, 536, "trophy");
+      trophy.setScale(30 / trophy.height).setInteractive({ useHandCursor: true });
+      if (!master) trophy.setTint(0x55707a).setAlpha(0.8);
+      else if (!this.reducedMotion) this.tweens.add({ targets: trophy, angle: { from: -6, to: 6 },
+        duration: 900, yoyo: true, repeat: -1, ease: "Sine.InOut" });
+      trophy.on("pointerdown", () => hint.setText(master
+        ? "🏆 Mestre impressor! Você conquistou todas as estrelas."
+        : `🏆 Troféu de mestre impressor: conquiste as ${starsTotal} estrelas (faltam ${starsTotal - starsEarned}).`));
+    }
     const stageWidth = 112, stageGap = 12;
     const stageCards = levels.map((level, index) => {
       const x = 270 + (index - (levels.length - 1) / 2) * (stageWidth + stageGap), root = this.add.container(x, 651);
@@ -101,10 +116,16 @@ export class MenuScene extends Phaser.Scene {
       const product = this.add.sprite(0, -16, level.product).setDisplaySize(level.productWidth * scale, level.productHeight * scale);
       if (level.id === "garden") animateGardenSprite(product, "bowl");
       const productFx = product.preFX?.addColorMatrix();
-      const label = text(0, 53, level.name, 17, "#f3f9f6", true);
+      const label = text(0, 47, level.name, 17, "#f3f9f6", true);
+      const stars = [0, 1, 2].map(i => this.add.image((i - 1) * 20, 69, hasStar(records[level.id], i) ? "star" : "star-empty")
+        .setDisplaySize(18, 18));
       const badge = text(38, -65, "✓", 17, "#132d35", true);
       const badgeBg = this.add.circle(38, -65, 12, 0xffce79);
-      root.add([border, preview, tint, product, label, badgeBg, badge]);
+      const fresh = records[level.id] ? [] : [
+        this.add.graphics().fillStyle(0x81f1ce).fillRoundedRect(-50, -77, 46, 20, 10),
+        text(-27, -67, "NOVO", 11, "#0b2a32", true),
+      ];
+      root.add([border, preview, tint, product, label, ...stars, badgeBg, badge, ...fresh]);
       const zone = this.add.zone(x, 651, stageWidth, 166).setInteractive({ useHandCursor: true });
       return { level, root, border, preview, previewFx, tint, product, productFx, label, badge, badgeBg, zone };
     });
@@ -115,7 +136,10 @@ export class MenuScene extends Phaser.Scene {
       const level = getLevel(id);
       this.registry.set("level", level.id);
       productLabel.setText("NA IMPRESSORA  ·  " + level.productName.toUpperCase());
-      hint.setText(level.hint);
+      const record = records[level.id];
+      hint.setText(record?.bestTime ? `Recorde: ${formatTime(record.bestTime)}  ·  ${level.hint}`
+        : record?.bestProgress ? `Melhor altura: ${Math.floor(record.bestProgress * 100)}%  ·  ${level.hint}`
+        : level.hint);
       if (animate && !this.reducedMotion) {
         this.tweens.killTweensOf([productLabel, hint]);
         productLabel.setAlpha(0); hint.setAlpha(0);

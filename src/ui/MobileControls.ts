@@ -9,8 +9,9 @@ const icons = {
   play: icon('<path d="m8 4 12 8-12 8Z"/>'),
   menu: icon('<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/>'),
   sound: icon('<path d="m11 4-6 5H2v6h3l6 5ZM15 8a6 6 0 0 1 0 8M18 5a10 10 0 0 1 0 14"/>'),
+  muted: icon('<path d="m11 4-6 5H2v6h3l6 5ZM16 9l6 6M22 9l-6 6"/>'),
 };
-interface Actions { pause: () => void; menu: () => void; sound: () => boolean; unlock: () => void }
+interface Actions { pause: () => void; menu: () => void; sound: () => boolean; unlock: () => void; muted: boolean }
 export class MobileControls {
   left = false;
   right = false;
@@ -80,13 +81,14 @@ export class MobileControls {
     this.pauseButton.setAttribute("aria-pressed", "false");
     this.pauseButton.addEventListener("click", actions.pause, { signal });
     const sound = button(utilities, "Desativar som", icons.sound, "utility-button");
-    sound.setAttribute("aria-pressed", "false");
-    sound.addEventListener("click", () => {
-      const muted = actions.sound();
+    const showSound = (muted: boolean) => {
+      sound.innerHTML = muted ? icons.muted : icons.sound;
       sound.setAttribute("aria-pressed", String(muted));
       sound.setAttribute("aria-label", muted ? "Ativar som" : "Desativar som");
       sound.title = muted ? "Ativar som" : "Desativar som";
-    }, { signal });
+    };
+    showSound(actions.muted);
+    sound.addEventListener("click", () => showSound(actions.sound()), { signal });
     button(utilities, "Voltar à seleção", icons.menu, "utility-button")
       .addEventListener("click", actions.menu, { signal });
     this.root.append(pad, utilities);
@@ -95,7 +97,8 @@ export class MobileControls {
     this.pauseDialog.setAttribute("aria-describedby", "pause-description");
     this.pauseDialog.innerHTML = `<div class="pause-symbol">${icons.pause}</div>
       <h2 id="pause-title">JOGO PAUSADO</h2>
-      <p id="pause-description">Tudo pronto para continuar?<br>Toque no botão abaixo e volte ao jogo.</p>`;
+      <p id="pause-description">Tudo pronto para continuar?<br>Toque no botão abaixo e volte ao jogo.</p>
+      <ul class="pause-goals" aria-label="Metas da fase"></ul>`;
     this.resumeButton = button(this.pauseDialog, "Continuar jogando",
       icons.play + "<span>CONTINUAR JOGANDO</span>", "resume-button");
     this.resumeButton.autofocus = true;
@@ -137,6 +140,16 @@ export class MobileControls {
       this.pauseDialog.close();
       this.root.remove();
     });
+  }
+  /** Star goals shown while paused, so the player knows what is still missing. */
+  setGoals(goals: { label: string; done: boolean }[]) {
+    const list = this.pauseDialog.querySelector(".pause-goals")!;
+    list.replaceChildren(...goals.map(goal => {
+      const item = document.createElement("li");
+      item.dataset.done = String(goal.done);
+      item.textContent = goal.label;
+      return item;
+    }));
   }
   setPaused(paused: boolean) {
     this.pauseButton.innerHTML = paused ? icons.play : icons.pause;

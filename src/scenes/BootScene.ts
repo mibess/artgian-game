@@ -51,6 +51,10 @@ export class BootScene extends Phaser.Scene {
     this.load.image("jump-logo", "assets/menu/artgian-jump-logo.png");
     this.load.image("filament", "assets/filament-real.png");
     this.load.image("jump-title", "assets/menu/artgian-jump.png");
+    this.load.image("star", "assets/ui/star.png");
+    this.load.image("star-empty", "assets/ui/star-empty.png");
+    this.load.image("checkpoint-flag", "assets/ui/checkpoint-flag.png");
+    this.load.image("trophy", "assets/ui/trophy.png");
     for (const character of characters) {
       for (const action of ["idle", "walk", "jump"]) {
         this.load.spritesheet(character.id + "-" + action,
